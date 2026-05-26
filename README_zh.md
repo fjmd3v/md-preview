@@ -2,106 +2,153 @@
 
 **[English](README.md) · 简体中文**
 
-[![GitHub stars](https://img.shields.io/github/stars/vorojar/md-preview)](https://github.com/vorojar/md-preview/stargazers) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT) [![Release](https://img.shields.io/github/v/release/vorojar/md-preview)](https://github.com/vorojar/md-preview/releases) [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)](https://github.com/vorojar/md-preview/releases) [![Binary size](https://img.shields.io/badge/binary%20size-~5MB-green)](https://github.com/vorojar/md-preview)
+[![GitHub stars](https://img.shields.io/github/stars/vorojar/md-preview)](https://github.com/vorojar/md-preview/stargazers)
+[![Release](https://img.shields.io/github/v/release/vorojar/md-preview)](https://github.com/vorojar/md-preview/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)](https://github.com/vorojar/md-preview/releases)
+[![Binary size](https://img.shields.io/badge/binary-~5MB-green)](https://github.com/vorojar/md-preview/releases)
 
-> 极轻量的 Markdown 预览工具，约 5MB 二进制，无 Electron，纯原生实现。
+> 一个很小的原生 Markdown 预览器：打开 `.md` 文件，不必顺手启动一整个 IDE。
 
-用 **Rust** 和系统 **WebView** 写的跨平台 Markdown 预览工具。不打包浏览器、没有沉重运行时 —— 一个很小的原生二进制，把 `.md` 文件渲染得漂漂亮亮。
+MD Preview 是用 **Rust** 和系统 **WebView** 写的本地优先 Markdown 预览工具。它不打包 Chromium，不依赖 Electron，渲染资源全部离线内置。你可以拖入文件、从命令行打开文件，或者把它放在常用编辑器旁边当一扇干净的预览窗口。
 
-![MD Preview](https://raw.githubusercontent.com/vorojar/md-preview/master/screenshots/hero.jpg)
+![MD Preview 截图](https://raw.githubusercontent.com/vorojar/md-preview/master/screenshots/hero.jpg)
 
-## 为什么用 MD Preview？
+## 为什么做它
 
-|  | MD Preview | Electron 类 |
+很多 Markdown 工具要么是完整写作套件，要么是编辑器插件。MD Preview 刻意保持更小：
+
+- **打开快**：原生二进制、系统 WebView，不带一份浏览器运行时。
+- **本地渲染**：Markdown、代码高亮、数学公式、Mermaid 图表都在本机完成。
+- **跟随你的编辑器**：用 Vim、VS Code、Cursor、Zed 或任何编辑器保存文件，预览自动刷新。
+- **阅读不打扰**：工具栏只在 hover 时出现，文档始终是主角。
+- **覆盖真实文档**：代码块、表格、任务列表、公式、图表、图片、链接、打印都能离线工作。
+
+## 下载
+
+从 [GitHub Releases](https://github.com/vorojar/md-preview/releases) 下载最新版。
+
+| 平台 | 包名 | 说明 |
 |---|---|---|
-| **二进制大小** | ~5 MB | 150+ MB |
-| **内存占用** | ~15 MB | 200+ MB |
-| **启动时间** | 瞬间 | 2–5 秒 |
-| **运行时** | 系统 WebView | 内置 Chromium |
+| macOS | `MD-Preview-macOS-universal.dmg` | Apple Silicon 和 Intel 通用。Release 版本会签名、公证。 |
+| Windows | `MD-Preview-windows-x64.zip` | GUI 可执行文件，已内嵌应用图标。 |
+| Linux | `MD-Preview-linux-x64.tar.gz` | 需要系统 WebKitGTK 运行时。 |
 
-## 功能
-
-- **拖拽打开** — 把任意 `.md` 拖到窗口
-- **命令行** — `md-preview README.md` 直接打开
-- **实时刷新** — 文件改动自动重渲染（基于文件监听）
-- **源码编辑** — 右上角 hover 时浮现的工具栏切换预览 / 编辑模式；`Cmd/Ctrl+E` 切换，`Cmd/Ctrl+S` 保存；只想阅读时工具栏自动隐去，不打扰
-- **打印** — `Cmd/Ctrl+P` 或工具栏按钮调起系统打印；工具栏和编辑区在打印样式下自动隐藏
-- **代码高亮** — 40+ 语言，完全离线（延迟到首屏之后加载，不阻塞渲染）
-- **公式和图表** — 支持 KaTeX 数学公式和 Mermaid 图表，完全离线，并且只在文档实际使用时按需加载
-- **更新检测** — 首屏之后检查 GitHub Releases，发现新版本时打开最新 Release 页面
-- **暗色模式** — 自动跟随系统主题（macOS / Windows / Linux）
-- **GFM 支持** — 表格、任务列表、删除线、标题锚点
-- **外链跳系统浏览器** — md 里的 http/https/mailto 链接用默认浏览器/邮件客户端打开
-- **文件关联（Windows）** — 首次启动自动把 `.md` 注册到"打开方式"列表
-- **记住窗口** — 退出时记录位置/大小，下次启动恢复；首次启动在主显示器居中
-
-## 下载预编译版
-
-直接去 [Releases](https://github.com/vorojar/md-preview/releases) 下载对应系统的包：
-
-- macOS：`MD-Preview-macOS-universal.dmg`（Universal，Apple Silicon + Intel 通用）
-- Windows：`MD-Preview-windows-x64.zip`
-- Linux：`MD-Preview-linux-x64.tar.gz`
-
-## 从源码构建
+也可以从源码构建：
 
 ```bash
-# 需要 Rust 工具链：https://rustup.rs
 git clone https://github.com/vorojar/md-preview.git
 cd md-preview
 cargo build --release
-# 产物位置：target/release/md-preview
+./target/release/md-preview README.md
 ```
 
-### 打成 macOS .app
+本地打包 macOS `.app`：
 
 ```bash
 chmod +x bundle.sh
 ./bundle.sh
-# 安装到 /Applications
 cp -r "target/MD Preview.app" /Applications/
 ```
 
 ## 使用
 
 ```bash
-# 带文件参数打开
+# 直接打开文件
 md-preview README.md
 
-# 或者空启动，拖文件进来
+# 或空启动后拖入文件
 md-preview
 ```
 
-### 快捷键
+MD Preview 支持通过拖拽、打开对话框或命令行打开 `.md` / `.txt` 文件。相对路径图片会按 Markdown 文件所在目录解析，本地文档目录可以自然渲染。
+
+## 功能
+
+| 功能 | 说明 |
+|---|---|
+| 拖拽打开 | 把 Markdown 文件拖进窗口即可打开。 |
+| 命令行打开 | `md-preview path/to/file.md` 直接从 shell 打开。 |
+| 实时刷新 | 外部编辑保存后，预览自动更新。 |
+| 源码编辑 | `Cmd/Ctrl+E` 切到源码模式快速改字，`Cmd/Ctrl+S` 保存。 |
+| 原生打印 | `Cmd/Ctrl+P` 打开系统打印对话框，只打印预览内容。 |
+| 代码高亮 | highlight.js 离线内置，首屏之后再注入，不阻塞打开。 |
+| 数学公式 | KaTeX 按需渲染 `$...$`、`$$...$$`、`\(...\)`、`\[...\]`。 |
+| 图表 | Mermaid fenced code block 只在文档实际使用时本地渲染。 |
+| 暗色模式 | 自动跟随 macOS、Windows、Linux 的系统主题。 |
+| GFM 支持 | 表格、任务列表、删除线、heading attributes、标题锚点。 |
+| 外链跳转 | `http`、`https`、`mailto` 链接交给系统浏览器或邮件客户端。 |
+| 窗口恢复 | 下次启动恢复上次位置和大小；断开显示器后自动回到可见屏幕。 |
+| 更新检测 | 首屏之后检查 GitHub Releases，有新版本时显示一个小更新按钮。 |
+
+## 快捷键
 
 | 快捷键 | 作用 |
 |---|---|
-| `Cmd/Ctrl + O` | 打开文件对话框 |
+| `Cmd/Ctrl + O` | 打开文件 |
 | `Cmd/Ctrl + E` | 切换预览 / 源码编辑 |
-| `Cmd/Ctrl + S` | 保存（编辑模式下）|
-| `Cmd/Ctrl + P` | 打印 |
-| `Esc` | 退出编辑模式（自动保存）|
-| 拖拽 | 打开 `.md` / `.txt` 文件 |
+| `Cmd/Ctrl + S` | 源码编辑模式下保存 |
+| `Cmd/Ctrl + P` | 打印预览 |
+| `Esc` | 退出源码编辑模式，并在需要时保存 |
 
-## 技术栈
+## Markdown 支持
 
-- **[Rust](https://www.rust-lang.org/)** — 系统级语言，零成本抽象
-- **[wry](https://github.com/tauri-apps/wry)** — 跨平台 WebView 库（macOS: WebKit，Windows: WebView2，Linux: WebKitGTK）
-- **[pulldown-cmark](https://github.com/raphlinus/pulldown-cmark)** — CommonMark / GFM 解析器
-- **[highlight.js](https://highlightjs.org/)** — 40+ 语言语法高亮（离线嵌入）
-- **[KaTeX](https://katex.org/)** — 快速数学公式渲染，离线内置并按需加载
-- **[Mermaid](https://mermaid.js.org/)** — 图表渲染，离线内置并按需加载
-- **[notify](https://github.com/notify-rs/notify)** — 跨平台文件监听
-- **[rfd](https://github.com/PolyMeilex/rfd)** — 原生文件对话框
+MD Preview 先用 `pulldown-cmark` 完成基础 Markdown 解析，再只在需要时增强渲染结果：
 
-## 跨平台支持
+- CommonMark 加 GFM 风格表格、任务列表、删除线、heading attributes
+- 40+ 语言离线代码高亮，包含 Delphi / Pascal
+- KaTeX 离线数学公式渲染，并保护公式不被 Markdown 强调语法破坏
+- Mermaid 离线渲染 ```` ```mermaid ```` fenced code block
+- 通过按文件设置 `<base>` 支持相对路径图片
+- 打印样式自动移除应用工具栏和源码编辑区
 
-| 平台 | WebView 引擎 | 状态 |
-|---|---|---|
-| macOS | WebKit (WKWebView) | ✅ 已测试 |
-| Windows | WebView2 (Edge) | ✅ 支持 |
-| Linux | WebKitGTK | ✅ 支持 |
+普通 Markdown 走轻路径：文档先可见，highlight.js、KaTeX、Mermaid 这类较重的增强逻辑延迟到首屏之后，或只在文档真正需要时加载。
+
+## 为什么能小
+
+MD Preview 不是 Tauri，也不是 Electron。它主要使用：
+
+- **Rust**：原生 shell 和 Markdown 管线
+- **wry**：系统 WebView，macOS 是 WebKit，Windows 是 WebView2，Linux 是 WebKitGTK
+- **tao**：跨平台窗口和事件循环
+- **pulldown-cmark**：Markdown 解析
+- **notify**：文件监听
+- **rfd**：原生打开文件对话框
+
+Release profile 使用面向体积的优化、LTO、单 codegen unit、符号裁剪和 `panic = "abort"`。
+
+## 隐私
+
+MD Preview 没有账号、没有 telemetry、没有 analytics。你的 Markdown 文件留在本地磁盘，渲染也在本机完成。应用自身唯一的网络请求是首屏之后的 GitHub Releases 更新检测；失败会静默忽略，不影响启动和预览。
+
+## 常见问题
+
+**Linux 启动不了**
+
+请安装发行版对应的 WebKitGTK 4.1 包。Debian / Ubuntu 可以执行：
+
+```bash
+sudo apt-get install libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev
+```
+
+**Windows 不能自动设为默认 Markdown 应用**
+
+Windows 不允许应用静默接管文件关联。MD Preview 会把自己注册到“打开方式”列表，你可以在资源管理器或 Windows 设置里选择它。
+
+**公式或图表显示成普通文本**
+
+先确认语法是合法的 Markdown / KaTeX / Mermaid。公式和图表都是按需加载的，不包含这些语法的文档不会承担额外启动成本。
+
+## 开发
+
+```bash
+cargo build
+cargo test
+cargo build --release
+```
+
+CI 会构建 macOS、Windows、Linux。推送匹配 `v*` 的 tag 后，GitHub Actions 会产出 macOS DMG、Windows ZIP 和 Linux tarball。
 
 ## 许可证
 
-MIT
+[MIT](LICENSE)

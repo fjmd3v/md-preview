@@ -2,99 +2,153 @@
 
 **English · [简体中文](README_zh.md)**
 
-[![GitHub stars](https://img.shields.io/github/stars/vorojar/md-preview)](https://github.com/vorojar/md-preview/stargazers) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT) [![Release](https://img.shields.io/github/v/release/vorojar/md-preview)](https://github.com/vorojar/md-preview/releases) [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)](https://github.com/vorojar/md-preview/releases) [![Binary size](https://img.shields.io/badge/binary%20size-~5MB-green)](https://github.com/vorojar/md-preview)
+[![GitHub stars](https://img.shields.io/github/stars/vorojar/md-preview)](https://github.com/vorojar/md-preview/stargazers)
+[![Release](https://img.shields.io/github/v/release/vorojar/md-preview)](https://github.com/vorojar/md-preview/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)](https://github.com/vorojar/md-preview/releases)
+[![Binary size](https://img.shields.io/badge/binary-~5MB-green)](https://github.com/vorojar/md-preview/releases)
 
-> Ultra-lightweight Markdown preview app. ~5MB binary, zero Electron, pure native.
+> A tiny native Markdown previewer for people who want to open a `.md` file now, not launch an IDE.
 
-A blazing-fast, cross-platform Markdown preview tool built with **Rust** and system **WebView**. No bundled browser, no heavy runtimes — just a small native binary that renders your `.md` files beautifully.
+MD Preview is a fast, local-first Markdown viewer built with **Rust** and the system **WebView**. It does not bundle Chromium, does not require Electron, and keeps all rendering assets offline. Drop in a Markdown file, open one from the terminal, or use it as a clean preview window beside your editor.
 
-![MD Preview](https://raw.githubusercontent.com/vorojar/md-preview/master/screenshots/hero.jpg)
+![MD Preview screenshot](https://raw.githubusercontent.com/vorojar/md-preview/master/screenshots/hero.jpg)
 
-## Why MD Preview?
+## Why It Exists
 
-| | MD Preview | Electron-based |
+Most Markdown tools are either full writing studios or editor plugins. MD Preview is deliberately smaller:
+
+- **Open fast** - native binary, system WebView, no bundled browser runtime.
+- **Stay local** - Markdown, syntax highlighting, math, and diagrams render on your machine.
+- **Follow your editor** - save the file in Vim, VS Code, Cursor, Zed, or anything else; the preview refreshes automatically.
+- **Keep reading clean** - the toolbar only appears on hover, so the document stays the focus.
+- **Handle real Markdown** - code blocks, tables, task lists, math formulas, Mermaid diagrams, images, links, and print all work offline.
+
+## Download
+
+Get the latest build from [GitHub Releases](https://github.com/vorojar/md-preview/releases).
+
+| Platform | Package | Notes |
 |---|---|---|
-| **Binary size** | ~5 MB | 150+ MB |
-| **Memory usage** | ~15 MB | 200+ MB |
-| **Startup time** | Instant | 2-5 seconds |
-| **Runtime** | System WebView | Bundled Chromium |
+| macOS | `MD-Preview-macOS-universal.dmg` | Universal app for Apple Silicon and Intel. Releases are signed and notarized. |
+| Windows | `MD-Preview-windows-x64.zip` | Includes a GUI executable with the app icon embedded. |
+| Linux | `MD-Preview-linux-x64.tar.gz` | Requires the system WebKitGTK runtime. |
 
-## Features
-
-- **Drag & drop** — drop any `.md` file onto the window
-- **CLI support** — `md-preview README.md` opens directly
-- **Live reload** — edits refresh automatically via file watcher
-- **Inline edit** — hover-reveal toolbar in the top-right toggles between preview and source edit; `Cmd/Ctrl+E` to flip, `Cmd/Ctrl+S` to save. Stays out of your way when you only want to read.
-- **Print** — `Cmd/Ctrl+P` or the print button; toolbar and editor are stripped from the printed page automatically
-- **Syntax highlighting** — 40+ languages, powered by highlight.js (fully offline, deferred past first paint)
-- **Math & diagrams** — KaTeX formulas and Mermaid diagrams, fully offline and loaded only when the document uses them
-- **Update check** — checks GitHub Releases after first paint and opens the latest release page when an update exists
-- **Dark mode** — auto-follows system theme (macOS / Windows / Linux)
-- **GFM support** — tables, task lists, strikethrough, heading anchors
-- **Remembers window** — last position and size restored on next launch; new windows center on the primary monitor
-
-## Install
-
-### Build from source
+You can also build from source:
 
 ```bash
-# Prerequisites: Rust toolchain (https://rustup.rs)
 git clone https://github.com/vorojar/md-preview.git
 cd md-preview
 cargo build --release
-# Binary at: target/release/md-preview
+./target/release/md-preview README.md
 ```
 
-### macOS .app bundle
+To create the macOS `.app` bundle locally:
 
 ```bash
-# Build and package as macOS app
 chmod +x bundle.sh
 ./bundle.sh
-# Install to Applications
 cp -r "target/MD Preview.app" /Applications/
 ```
 
 ## Usage
 
 ```bash
-# Open with file argument
+# Open a file directly
 md-preview README.md
 
-# Or launch and drag files in
+# Or launch an empty window and drag in a file
 md-preview
 ```
 
-### Keyboard Shortcuts
+MD Preview accepts `.md` and `.txt` files through drag and drop, the open dialog, or the command line. Relative images are resolved from the Markdown file's directory, so local documentation folders render naturally.
+
+## Features
+
+| Feature | What it means |
+|---|---|
+| Drag and drop | Drop a Markdown file into the window and it opens immediately. |
+| CLI open | `md-preview path/to/file.md` opens directly from a shell. |
+| Live reload | External edits refresh the rendered document automatically. |
+| Inline source edit | `Cmd/Ctrl+E` switches to source mode for quick edits; `Cmd/Ctrl+S` saves. |
+| Native print | `Cmd/Ctrl+P` opens the platform print dialog and prints only the preview. |
+| Syntax highlighting | highlight.js is embedded offline and injected after first paint. |
+| Math | KaTeX renders `$...$`, `$$...$$`, `\(...\)`, and `\[...\]` on demand. |
+| Diagrams | Mermaid fenced blocks render locally when the document actually uses them. |
+| Dark mode | Follows the system color scheme across macOS, Windows, and Linux. |
+| GitHub-flavored Markdown | Tables, task lists, strikethrough, heading attributes, and anchors. |
+| External links | `http`, `https`, and `mailto` links open in the system browser or mail app. |
+| Window restore | Last size and position are restored when still visible on a connected monitor. |
+| Update check | After first paint, MD Preview checks GitHub Releases and shows a small update button if a newer version exists. |
+
+## Keyboard Shortcuts
 
 | Shortcut | Action |
 |---|---|
-| `Cmd/Ctrl + O` | Open file dialog |
-| `Cmd/Ctrl + E` | Toggle preview / source edit |
-| `Cmd/Ctrl + S` | Save (in edit mode) |
-| `Cmd/Ctrl + P` | Print |
-| `Esc` | Leave edit mode (auto-saves) |
-| Drag & Drop | Open `.md` / `.txt` file |
+| `Cmd/Ctrl + O` | Open file |
+| `Cmd/Ctrl + E` | Toggle preview/source edit |
+| `Cmd/Ctrl + S` | Save in source edit mode |
+| `Cmd/Ctrl + P` | Print preview |
+| `Esc` | Leave source edit mode and save if needed |
 
-## Tech Stack
+## Markdown Support
 
-- **[Rust](https://www.rust-lang.org/)** — systems language, zero-cost abstractions
-- **[wry](https://github.com/tauri-apps/wry)** — cross-platform WebView library (macOS: WebKit, Windows: WebView2, Linux: WebKitGTK)
-- **[pulldown-cmark](https://github.com/raphlinus/pulldown-cmark)** — CommonMark/GFM Markdown parser
-- **[highlight.js](https://highlightjs.org/)** — syntax highlighting for 40+ languages (embedded offline)
-- **[KaTeX](https://katex.org/)** — fast math rendering, embedded offline and loaded on demand
-- **[Mermaid](https://mermaid.js.org/)** — diagram rendering, embedded offline and loaded on demand
-- **[notify](https://github.com/notify-rs/notify)** — cross-platform file watcher
-- **[rfd](https://github.com/PolyMeilex/rfd)** — native file dialogs
+MD Preview uses `pulldown-cmark` for the base Markdown pass, then enhances the rendered document only when needed:
 
-## Cross-Platform
+- CommonMark plus GFM-style tables, task lists, strikethrough, and heading attributes
+- Offline code highlighting for 40+ languages, including Delphi/Pascal
+- Offline KaTeX math rendering with safeguards so Markdown emphasis does not break formulas
+- Offline Mermaid rendering for fenced ```` ```mermaid ```` blocks
+- Relative image paths through a per-file `<base>` URL
+- Print CSS that removes app controls from printed output
 
-| Platform | WebView Engine | Status |
-|---|---|---|
-| macOS | WebKit (WKWebView) | ✅ Tested |
-| Windows | WebView2 (Edge) | ✅ Supported |
-| Linux | WebKitGTK | ✅ Supported |
+The cold path stays small: regular Markdown renders first, while heavier enhancers such as highlight.js, KaTeX, and Mermaid are deferred until after the first visible paint or loaded only for documents that need them.
+
+## How It Stays Small
+
+MD Preview is not a Tauri or Electron app. It uses:
+
+- **Rust** for the native shell and Markdown pipeline
+- **wry** for the system WebView: WebKit on macOS, WebView2 on Windows, WebKitGTK on Linux
+- **tao** for the cross-platform window/event loop
+- **pulldown-cmark** for Markdown parsing
+- **notify** for file watching
+- **rfd** for native open dialogs
+
+The release profile enables size-oriented optimization, LTO, one codegen unit, symbol stripping, and `panic = "abort"`.
+
+## Privacy
+
+MD Preview has no accounts, no telemetry, and no analytics. Your Markdown files stay on disk. Rendering happens locally. The only network request made by the app itself is the optional GitHub Releases update check after the first paint; failed checks are ignored and never block startup.
+
+## Troubleshooting
+
+**Linux does not launch**
+
+Install WebKitGTK 4.1 packages for your distribution. On Debian/Ubuntu:
+
+```bash
+sudo apt-get install libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev
+```
+
+**Windows cannot set MD Preview as the default app automatically**
+
+Windows does not allow apps to silently take over file associations. MD Preview registers itself in the "Open with" list; choose it from Explorer or Windows Settings.
+
+**A formula or diagram shows as text**
+
+Make sure the syntax is valid Markdown/KaTeX/Mermaid. Math and Mermaid are loaded on demand, so documents without those patterns do not pay the startup cost.
+
+## Development
+
+```bash
+cargo build
+cargo test
+cargo build --release
+```
+
+CI builds macOS, Windows, and Linux. Release tags matching `v*` produce a macOS DMG, Windows ZIP, and Linux tarball through GitHub Actions.
 
 ## License
 
-MIT
+[MIT](LICENSE)
