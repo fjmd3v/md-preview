@@ -664,6 +664,8 @@ body.empty .toolbar {{ display: none !important; }}
 body.editing #preview {{ display: none; }}
 body.editing #editor {{ display: block; padding: 16px 24px; }}
 body.editing #app {{ max-width: none; padding: 0; }}
+body.editing #btn-open,
+body.editing #btn-search,
 body.editing #btn-print {{ display: none; }}
 
 @media print {{
@@ -744,7 +746,7 @@ body.editing #btn-print {{ display: none; }}
 	  }}
 	  function showFind() {{
 	    if (document.body.classList.contains('empty')) return;
-	    if (inEdit()) leaveEdit();
+	    if (inEdit()) return;
 	    document.body.classList.add('finding');
 	    setTimeout(function(){{ findInput.focus(); findInput.select(); }}, 0);
 	  }}
@@ -772,14 +774,22 @@ body.editing #btn-print {{ display: none; }}
     ta.style.height = h + 'px';
     window.scrollTo(x, y);
   }}
-  function enterEdit() {{
-    document.body.classList.add('editing');
-    btnToggle.innerHTML = ICON_VIEW;
-    btnToggle.title = L_VIEW;
-    btnToggle.setAttribute('aria-label', L_VIEW);
-    autoResize();
-    ta.focus();
-  }}
+	  function enterEdit() {{
+	    var x = window.scrollX || document.documentElement.scrollLeft || 0;
+	    var y = window.scrollY || document.documentElement.scrollTop || 0;
+	    document.body.classList.add('editing');
+	    btnToggle.innerHTML = ICON_VIEW;
+	    btnToggle.title = L_VIEW;
+	    btnToggle.setAttribute('aria-label', L_VIEW);
+	    autoResize();
+	    try {{
+	      ta.focus({{ preventScroll: true }});
+	    }} catch (_) {{
+	      ta.focus();
+	    }}
+	    window.scrollTo(x, y);
+	    requestAnimationFrame(function() {{ window.scrollTo(x, y); }});
+	  }}
   function leaveEdit() {{
     if (dirty) save();
     document.body.classList.remove('editing');
@@ -1020,6 +1030,8 @@ mod tests {
         assert!(page.contains("id=\"btn-search\""));
         assert!(page.contains("window.ipc.postMessage('open')"));
         assert!(page.contains("Cmd/Ctrl+F"));
+        assert!(page.contains("body.editing #btn-open"));
+        assert!(page.contains("ta.focus({ preventScroll: true })"));
     }
 
     #[test]

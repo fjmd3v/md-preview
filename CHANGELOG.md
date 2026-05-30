@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.7
+
+- Hid Open, Search, and Print while editing, leaving only the preview toggle.
+- Prevented edit mode from scrolling to the end of long documents.
+
 ## 1.1.6
 
 - Restored the desktop empty-state visual style while keeping the new Open File and Recent entries.
