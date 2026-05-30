@@ -17,7 +17,7 @@
 - [x] 已加载文档时，工具栏含 Open / Find / Edit / Print，`Cmd/Ctrl+F` 可打开搜索栏。
 - [x] 最近文件只写入本机配置目录，不进入仓库和发布包。
 - [x] `./scripts/verify.sh` 通过。
-- [ ] 桌面 `v1.1.5` GitHub Release 生成，并完成 macOS DMG 签名、公证、staple。
+- [x] 桌面 `v1.1.5` GitHub Release 生成，并完成 macOS DMG 签名、公证、staple。
 
 ## 执行记录
 
@@ -40,6 +40,9 @@
 
 命令：cargo build --release
 结果：通过。桌面 release profile 构建成功。
+
+命令：gh release view/list；release-sign.sh v1.1.5；stapler/spctl/codesign；下载 release DMG 比对 SHA-256
+结果：通过。v1.1.5 为 Latest，Release 含 macOS DMG / Windows ZIP / Linux tar.gz；macOS DMG 与内部 app 已签名、公证、staple；线上 DMG 与本地签名 DMG SHA-256 一致。
 ```
 
 ## 风险和假设
