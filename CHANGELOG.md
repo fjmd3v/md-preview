@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.8
+
+- Removed the Recent heading underline while keeping recent file entries visually unchanged.
+- Softened the Recent label on the desktop empty state.
+
 ## 1.1.7
 
 - Hid Open, Search, and Print while editing, leaving only the preview toggle.

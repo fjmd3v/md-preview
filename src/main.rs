@@ -476,7 +476,7 @@ fn empty_preview_html(s: &Strings, recent_files: &[PathBuf]) -> String {
 
     if !recent_files.is_empty() {
         html.push_str(&format!(
-            r#"<div class="recent"><h2>{}</h2><div class="recent-list">"#,
+            r#"<div class="recent"><div class="recent-title">{}</div><div class="recent-list">"#,
             html_escape_text(s.recent_title)
         ));
         for (index, path) in recent_files.iter().take(MAX_RECENT_FILES).enumerate() {
@@ -580,7 +580,7 @@ body {{
 	}}
 	.empty-open:hover {{ background: #f5f5f5; color: #000; }}
 	.recent {{ width: min(480px, 100%); margin-top: 16px; text-align: left; }}
-	.recent h2 {{ margin: 0 0 8px; font-size: 12px; font-weight: 600; letter-spacing: 0; color: #999; text-transform: uppercase; }}
+	.recent-title {{ margin: 0 0 8px; padding: 0; border: 0; font-size: 11px; font-weight: 600; letter-spacing: 0; color: #b6b6b6; text-transform: uppercase; }}
 	.recent-list {{ display: grid; gap: 6px; }}
 	.recent-item {{
 	  width: 100%; min-height: 44px; padding: 7px 10px; border: 1px solid #eee;
