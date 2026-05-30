@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.9
+
+- Made stale Recent entries safe on desktop by removing missing files from the start screen instead of trying to open them.
+- Updated Android Recent handling so opened Markdown files are cached inside the app and stale entries are removed without crashing.
+- Added mobile app information to the README files and updated release links.
+
 ## 1.1.8
 
 - Removed the Recent heading underline while keeping recent file entries visually unchanged.

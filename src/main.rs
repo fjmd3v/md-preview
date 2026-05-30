@@ -25,6 +25,7 @@ enum UserEvent {
     FileSaved,   // our own save: refresh preview only, leave textarea cursor alone
     DirtyChanged(bool),
     Print, // route print through wry's native API (WKWebView ignores window.print())
+    RecentChanged,
     Ready, // first paint landed: inject hljs now; if bench mode, also exit
 }
 
@@ -310,6 +311,17 @@ fn remember_recent_file(files: &Arc<Mutex<Vec<PathBuf>>>, path: &Path) {
     recent.insert(0, path.to_path_buf());
     recent.truncate(MAX_RECENT_FILES);
     save_recent_files(&recent);
+}
+
+fn forget_recent_file(files: &Arc<Mutex<Vec<PathBuf>>>, path: &Path) -> bool {
+    let mut recent = files.lock().unwrap();
+    let original_len = recent.len();
+    recent.retain(|p| p != path);
+    if recent.len() == original_len {
+        return false;
+    }
+    save_recent_files(&recent);
+    true
 }
 
 fn percent_encode_file_path(s: &str) -> String {
@@ -800,13 +812,18 @@ body.editing #btn-print {{ display: none; }}
 
 	  btnOpen.addEventListener('click', openFile);
 	  btnSearch.addEventListener('click', showFind);
-	  document.querySelectorAll('[data-open-file]').forEach(function(btn) {{
-	    btn.addEventListener('click', openFile);
-	  }});
-	  document.querySelectorAll('[data-recent-index]').forEach(function(btn) {{
-	    btn.addEventListener('click', function() {{
-	      window.ipc.postMessage('open-recent:' + btn.getAttribute('data-recent-index'));
-	    }});
+	  document.addEventListener('click', function(e) {{
+	    var openBtn = e.target && e.target.closest ? e.target.closest('[data-open-file]') : null;
+	    if (openBtn) {{
+	      e.preventDefault();
+	      openFile();
+	      return;
+	    }}
+	    var recentBtn = e.target && e.target.closest ? e.target.closest('[data-recent-index]') : null;
+	    if (recentBtn) {{
+	      e.preventDefault();
+	      window.ipc.postMessage('open-recent:' + recentBtn.getAttribute('data-recent-index'));
+	    }}
 	  }});
 	  findInput.addEventListener('input', function() {{ runFind(false); }});
 	  findInput.addEventListener('keydown', function(e) {{
@@ -897,6 +914,15 @@ body.editing #btn-print {{ display: none; }}
       if (inEdit()) autoResize();
     }}
   }};
+	  window.__setEmptyPreview = function(previewHtml) {{
+	    document.body.classList.add('empty');
+	    hideFind();
+	    window.__setBaseHref('');
+	    document.getElementById('preview').innerHTML = previewHtml;
+	    ta.value = '';
+	    setDirty(false);
+	    window.scrollTo(0, 0);
+	  }};
 
   // Defer hljs parse + initial highlight to idle time.
   // hljs itself is NOT inlined in this page — Rust injects it via
@@ -1032,6 +1058,7 @@ mod tests {
         assert!(page.contains("Cmd/Ctrl+F"));
         assert!(page.contains("body.editing #btn-open"));
         assert!(page.contains("ta.focus({ preventScroll: true })"));
+        assert!(page.contains("window.__setEmptyPreview"));
     }
 
     #[test]
@@ -1442,8 +1469,12 @@ fn main() {
                 if let Ok(index) = index.parse::<usize>() {
                     let path = recent_files_for_ipc.lock().unwrap().get(index).cloned();
                     if let Some(path) = path {
-                        *file_path_for_ipc.lock().unwrap() = Some(path);
-                        let _ = proxy_for_ipc.send_event(UserEvent::FileChanged);
+                        if path.exists() {
+                            *file_path_for_ipc.lock().unwrap() = Some(path);
+                            let _ = proxy_for_ipc.send_event(UserEvent::FileChanged);
+                        } else if forget_recent_file(&recent_files_for_ipc, &path) {
+                            let _ = proxy_for_ipc.send_event(UserEvent::RecentChanged);
+                        }
                     }
                 }
             } else if body == "dirty:1" {
@@ -1643,6 +1674,14 @@ fn main() {
                     .unwrap_or_else(|| "MD Preview".to_string());
                 let prefix = if dirty { "• " } else { "" };
                 window.set_title(&format!("{}{} — MD Preview", prefix, name));
+            }
+            TaoEvent::UserEvent(UserEvent::RecentChanged) => {
+                let html = empty_preview_html(&strings, &recent_files.lock().unwrap());
+                let js = format!(
+                    "if(window.__setEmptyPreview)window.__setEmptyPreview('{}');",
+                    escape_js(&html)
+                );
+                let _ = webview.evaluate_script(&js);
             }
             TaoEvent::UserEvent(UserEvent::Print) => {
                 let _ = webview.print();

@@ -21,12 +21,15 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.webkit.WebResourceRequest;
+import android.widget.Toast;
 
 import org.json.JSONException;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -37,6 +40,7 @@ import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.UUID;
 
 public final class MainActivity extends Activity {
     private static final int OPEN_DOCUMENT_REQUEST = 7;
@@ -148,18 +152,29 @@ public final class MainActivity extends Activity {
     }
 
     private void openUri(Uri uri) {
+        openUri(uri, false);
+    }
+
+    private void openUri(Uri uri, boolean fromRecent) {
         try {
-            String markdown = readText(uri);
+            byte[] bytes = readBytes(uri);
+            String markdown = decodeMarkdown(bytes);
+            String name = displayName(uri);
             JSONObject payload = new JSONObject();
             payload.put("markdown", markdown);
-            payload.put("name", displayName(uri));
+            payload.put("name", name);
             payload.put("baseHref", "file".equals(uri.getScheme()) ? baseHref(uri) : "");
-            saveRecent(uri, payload.getString("name"));
+            saveRecent(name, bytes);
             evaluate("window.MDPreview && window.MDPreview.render(" + payload + ");");
-        } catch (IOException | JSONException e) {
+        } catch (IOException | RuntimeException | JSONException e) {
+            if (fromRecent) {
+                removeRecent(uri);
+                Toast.makeText(this, "Recent file is no longer available", Toast.LENGTH_SHORT).show();
+                return;
+            }
             JSONObject payload = new JSONObject();
             try {
-                payload.put("markdown", "Cannot read " + displayName(uri));
+                payload.put("markdown", "Cannot read " + safeDisplayName(uri));
                 payload.put("name", "Read error.md");
                 payload.put("baseHref", "");
             } catch (JSONException ignored) {
@@ -168,7 +183,7 @@ public final class MainActivity extends Activity {
         }
     }
 
-    private String readText(Uri uri) throws IOException {
+    private byte[] readBytes(Uri uri) throws IOException {
         ContentResolver resolver = getContentResolver();
         try (InputStream input = resolver.openInputStream(uri)) {
             if (input == null) {
@@ -180,7 +195,7 @@ public final class MainActivity extends Activity {
             while ((read = input.read(buffer)) != -1) {
                 output.write(buffer, 0, read);
             }
-            return decodeMarkdown(output.toByteArray());
+            return output.toByteArray();
         }
     }
 
@@ -221,8 +236,21 @@ public final class MainActivity extends Activity {
                         }
                     }
                 }
+            } catch (RuntimeException ignored) {
             }
         }
+        return fallbackDisplayName(uri);
+    }
+
+    private String safeDisplayName(Uri uri) {
+        try {
+            return displayName(uri);
+        } catch (RuntimeException ignored) {
+            return fallbackDisplayName(uri);
+        }
+    }
+
+    private String fallbackDisplayName(Uri uri) {
         String path = uri.getLastPathSegment();
         if (path == null || path.isEmpty()) {
             return "Untitled.md";
@@ -346,26 +374,142 @@ public final class MainActivity extends Activity {
         }
     }
 
-    private void saveRecent(Uri uri, String name) {
+    private File recentDirectory() {
+        File directory = new File(getFilesDir(), "RecentDocuments");
+        if (!directory.exists()) {
+            directory.mkdirs();
+        }
+        return directory;
+    }
+
+    private void saveRecent(String name, byte[] bytes) {
+        String displayName = cleanRecentName(name);
+        String fileName = UUID.randomUUID() + "-" + safeRecentFileName(displayName);
+        File file = new File(recentDirectory(), fileName);
+        try (FileOutputStream output = new FileOutputStream(file)) {
+            output.write(bytes);
+        } catch (IOException ignored) {
+            return;
+        }
+
         JSONArray previous = recentFiles();
         JSONArray next = new JSONArray();
-        String uriText = uri.toString();
         try {
             JSONObject current = new JSONObject();
-            current.put("id", uriText);
-            current.put("name", name);
+            current.put("id", fileName);
+            current.put("name", displayName);
             next.put(current);
-            for (int i = 0; i < previous.length() && next.length() < 8; i++) {
+            for (int i = 0; i < previous.length(); i++) {
                 JSONObject item = previous.optJSONObject(i);
-                if (item == null || uriText.equals(item.optString("id"))) {
+                if (item == null || displayName.equals(cleanRecentName(item.optString("name")))) {
+                    deleteRecentCopy(item);
                     continue;
                 }
-                next.put(item);
+                if (next.length() < 8) {
+                    next.put(item);
+                } else {
+                    deleteRecentCopy(item);
+                }
             }
         } catch (JSONException ignored) {
         }
         recentPrefs().edit().putString(RECENT_FILES, next.toString()).apply();
         sendRecentToWeb();
+    }
+
+    private void removeRecent(Uri uri) {
+        JSONArray previous = recentFiles();
+        JSONArray next = new JSONArray();
+        String uriText = uri.toString();
+        for (int i = 0; i < previous.length(); i++) {
+            JSONObject item = previous.optJSONObject(i);
+            if (item == null || uriText.equals(item.optString("id"))) {
+                continue;
+            }
+            next.put(item);
+        }
+        recentPrefs().edit().putString(RECENT_FILES, next.toString()).apply();
+        sendRecentToWeb();
+    }
+
+    private void removeRecentId(String id) {
+        JSONArray previous = recentFiles();
+        JSONArray next = new JSONArray();
+        for (int i = 0; i < previous.length(); i++) {
+            JSONObject item = previous.optJSONObject(i);
+            if (item == null) {
+                continue;
+            }
+            if (id.equals(item.optString("id"))) {
+                deleteRecentCopy(item);
+                continue;
+            }
+            next.put(item);
+        }
+        recentPrefs().edit().putString(RECENT_FILES, next.toString()).apply();
+        sendRecentToWeb();
+    }
+
+    private JSONObject recentItem(String id) {
+        JSONArray items = recentFiles();
+        for (int i = 0; i < items.length(); i++) {
+            JSONObject item = items.optJSONObject(i);
+            if (item != null && id.equals(item.optString("id"))) {
+                return item;
+            }
+        }
+        return null;
+    }
+
+    private boolean isLocalRecentId(String id) {
+        return Uri.parse(id).getScheme() == null;
+    }
+
+    private void deleteRecentCopy(JSONObject item) {
+        String id = item.optString("id");
+        if (id.isEmpty() || !isLocalRecentId(id)) {
+            return;
+        }
+        File file = new File(recentDirectory(), id);
+        if (file.isFile()) {
+            file.delete();
+        }
+    }
+
+    private String cleanRecentName(String name) {
+        if (name == null || name.trim().isEmpty()) {
+            return "Untitled.md";
+        }
+        return name.trim();
+    }
+
+    private String safeRecentFileName(String name) {
+        return cleanRecentName(name).replace("/", "-").replace("\\", "-");
+    }
+
+    private void openRecentId(String id) {
+        if (!isLocalRecentId(id)) {
+            openUri(Uri.parse(id), true);
+            return;
+        }
+        JSONObject item = recentItem(id);
+        File file = new File(recentDirectory(), id);
+        if (item == null || !file.isFile()) {
+            removeRecentId(id);
+            Toast.makeText(this, "Recent file is no longer available", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        try {
+            byte[] bytes = java.nio.file.Files.readAllBytes(file.toPath());
+            JSONObject payload = new JSONObject();
+            payload.put("markdown", decodeMarkdown(bytes));
+            payload.put("name", cleanRecentName(item.optString("name")));
+            payload.put("baseHref", "");
+            evaluate("window.MDPreview && window.MDPreview.render(" + payload + ");");
+        } catch (IOException | RuntimeException | JSONException e) {
+            removeRecentId(id);
+            Toast.makeText(this, "Recent file is no longer available", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void sendRecentToWeb() {
@@ -395,7 +539,7 @@ public final class MainActivity extends Activity {
 
         @JavascriptInterface
         public void openRecent(String uri) {
-            runOnUiThread(() -> openUri(Uri.parse(uri)));
+            runOnUiThread(() -> openRecentId(uri));
         }
     }
 }
