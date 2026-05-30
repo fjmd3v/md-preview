@@ -57,11 +57,80 @@ body {
 
 #title {
   min-width: 0;
+  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 15px;
   font-weight: 600;
+}
+
+#top-actions {
+  display: none;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+body:not(.empty) #top-actions {
+  display: flex;
+}
+
+.tool-button,
+.open-file,
+#search-bar button,
+.recent-item {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--soft);
+  color: var(--fg);
+  font: inherit;
+  font-size: 14px;
+}
+
+.tool-button {
+  min-height: 34px;
+  padding: 0 9px;
+  font-size: 13px;
+}
+
+#search-bar {
+  position: sticky;
+  top: 52px;
+  z-index: 9;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bar);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+#search-bar[hidden] {
+  display: none;
+}
+
+#search-input {
+  min-width: 0;
+  flex: 1;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  font-size: 16px;
+}
+
+#search-count {
+  min-width: 42px;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
 }
 
 #app {
@@ -100,16 +169,38 @@ body.empty #preview {
   margin: 0;
 }
 
-#open-file {
-  min-height: 40px;
+.open-file {
   margin-top: 18px;
-  padding: 0 14px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--soft);
-  color: var(--fg);
-  font: inherit;
-  font-size: 14px;
+}
+
+#top-actions .open-file {
+  margin-top: 0;
+}
+
+#recent-section {
+  width: min(100%, 320px);
+  margin-top: 28px;
+}
+
+#recent-section h2 {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+#recent-list {
+  display: grid;
+  gap: 8px;
+}
+
+.recent-item {
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
 }
 
 #preview {
@@ -238,8 +329,32 @@ body.empty #preview {
   color: #b42318;
 }
 
+#preview mark.search-hit {
+  border-radius: 3px;
+  background: #fff2a8;
+  color: inherit;
+}
+
+#preview mark.search-hit.current {
+  background: #ffd166;
+}
+
 @media (min-width: 720px) {
   #app {
     padding-top: 28px;
+  }
+}
+
+@media (max-width: 420px) {
+  .tool-button {
+    padding: 0 7px;
+  }
+
+  #search-bar {
+    flex-wrap: wrap;
+  }
+
+  #search-input {
+    flex-basis: 100%;
   }
 }

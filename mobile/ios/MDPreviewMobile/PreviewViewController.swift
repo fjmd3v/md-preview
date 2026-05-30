@@ -3,6 +3,18 @@ import UIKit
 import WebKit
 
 final class PreviewViewController: UIViewController {
+    private struct RecentDocument: Codable {
+        let name: String
+        let fileName: String
+    }
+
+    private struct RecentPayload: Encodable {
+        let id: String
+        let name: String
+    }
+
+    private static let recentKey = "recentDocuments"
+
     private lazy var webView: WKWebView = {
         let configuration = WKWebViewConfiguration()
         configuration.userContentController.add(self, name: "mdPreview")
@@ -64,6 +76,7 @@ final class PreviewViewController: UIViewController {
 
         do {
             let data = try Data(contentsOf: url)
+            saveRecent(data: data, name: url.lastPathComponent.isEmpty ? "Untitled.md" : url.lastPathComponent)
             let markdown = decodeMarkdown(data)
             let baseHref = url.isFileURL ? url.deletingLastPathComponent().absoluteString : ""
             let payload = PreviewPayload(
@@ -79,10 +92,92 @@ final class PreviewViewController: UIViewController {
             webView.evaluateJavaScript("window.MDPreview && window.MDPreview.render({markdown:\(message.jsStringLiteral),name:'Read error.md',baseHref:''});")
         }
     }
+
+    private func printDocument() {
+        let controller = UIPrintInteractionController.shared
+        let info = UIPrintInfo(dictionary: nil)
+        info.outputType = .general
+        info.jobName = webView.title?.replacingOccurrences(of: " - MD Preview", with: "") ?? "MD Preview"
+        controller.printInfo = info
+        controller.printFormatter = webView.viewPrintFormatter()
+        controller.present(animated: true)
+    }
+
+    private func recentDocuments() -> [RecentDocument] {
+        guard let data = UserDefaults.standard.data(forKey: Self.recentKey),
+              let items = try? JSONDecoder().decode([RecentDocument].self, from: data) else {
+            return []
+        }
+        return items
+    }
+
+    private func recentDirectory() -> URL? {
+        guard let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+            return nil
+        }
+        let directory = support.appendingPathComponent("RecentDocuments", isDirectory: true)
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory
+    }
+
+    private func saveRecent(data: Data, name: String) {
+        guard let directory = recentDirectory() else {
+            return
+        }
+        let safeName = name.replacingOccurrences(of: "/", with: "-")
+        let fileName = UUID().uuidString + "-" + safeName
+        let fileURL = directory.appendingPathComponent(fileName)
+        do {
+            try data.write(to: fileURL, options: .atomic)
+        } catch {
+            return
+        }
+        var items = recentDocuments()
+        let removed = items.filter { $0.name == name }
+        removed.forEach { item in
+            try? FileManager.default.removeItem(at: directory.appendingPathComponent(item.fileName))
+        }
+        items.removeAll { $0.name == name }
+        items.insert(RecentDocument(name: name, fileName: fileName), at: 0)
+        let trimmed = Array(items.prefix(8))
+        items.dropFirst(8).forEach { item in
+            try? FileManager.default.removeItem(at: directory.appendingPathComponent(item.fileName))
+        }
+        if let data = try? JSONEncoder().encode(trimmed) {
+            UserDefaults.standard.set(data, forKey: Self.recentKey)
+        }
+        sendRecentToWeb()
+    }
+
+    private func sendRecentToWeb() {
+        let payload = recentDocuments().enumerated().map { index, item in
+            RecentPayload(id: String(index), name: item.name)
+        }
+        guard let data = try? JSONEncoder().encode(payload) else {
+            return
+        }
+        let json = String(decoding: data, as: UTF8.self)
+        webView.evaluateJavaScript("window.MDPreview && window.MDPreview.setRecent(\(json));")
+    }
+
+    private func openRecent(id: String) {
+        guard let index = Int(id) else {
+            return
+        }
+        let items = recentDocuments()
+        guard items.indices.contains(index) else {
+            return
+        }
+        guard let directory = recentDirectory() else {
+            return
+        }
+        openDocument(at: directory.appendingPathComponent(items[index].fileName))
+    }
 }
 
 extension PreviewViewController: WKNavigationDelegate {
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        sendRecentToWeb()
         if let pendingURL {
             self.pendingURL = nil
             renderDocument(at: pendingURL)
@@ -92,7 +187,7 @@ extension PreviewViewController: WKNavigationDelegate {
     func webView(
         _ webView: WKWebView,
         decidePolicyFor navigationAction: WKNavigationAction,
-        decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+        decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void
     ) {
         guard navigationAction.navigationType == .linkActivated,
               let url = navigationAction.request.url else {
@@ -121,6 +216,13 @@ extension PreviewViewController: WKScriptMessageHandler {
            let action = body["action"] as? String {
             if action == "open" {
                 showDocumentPicker()
+            } else if action == "print" {
+                printDocument()
+            } else if action == "recent" {
+                sendRecentToWeb()
+            } else if action == "openRecent",
+                      let id = body["id"] as? String {
+                openRecent(id: id)
             } else if action == "openExternal",
                       let urlString = body["url"] as? String,
                       let url = URL(string: urlString),

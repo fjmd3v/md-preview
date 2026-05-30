@@ -99,6 +99,22 @@ if [ -f mobile/android/settings.gradle ]; then
   fi
 fi
 
+if [ -f mobile/scripts/verify-mobile-renderer.mjs ]; then
+  BUNDLED_NODE="/Users/longjiewu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node"
+  BUNDLED_NODE_MODULES="/Users/longjiewu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules"
+  if [ -x "$BUNDLED_NODE" ] && [ -d "$BUNDLED_NODE_MODULES" ]; then
+    echo "[agent-verify] mobile renderer"
+    NODE_PATH="$BUNDLED_NODE_MODULES" "$BUNDLED_NODE" mobile/scripts/verify-mobile-renderer.mjs
+    ran=1
+  elif command -v node >/dev/null 2>&1 && node -e "import('playwright')" >/dev/null 2>&1; then
+    echo "[agent-verify] mobile renderer"
+    node mobile/scripts/verify-mobile-renderer.mjs
+    ran=1
+  else
+    echo "[agent-verify] skip mobile renderer: playwright unavailable"
+  fi
+fi
+
 if [ -x mobile/scripts/verify-release-readiness.sh ]; then
   echo "[agent-verify] mobile release readiness"
   mobile/scripts/verify-release-readiness.sh

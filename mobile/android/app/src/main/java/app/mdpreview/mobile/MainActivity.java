@@ -1,14 +1,19 @@
 package app.mdpreview.mobile;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.ActivityNotFoundException;
 import android.content.ContentResolver;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Parcelable;
+import android.print.PrintAttributes;
+import android.print.PrintDocumentAdapter;
+import android.print.PrintManager;
 import android.provider.OpenableColumns;
 import android.webkit.ValueCallback;
 import android.webkit.JavascriptInterface;
@@ -18,6 +23,7 @@ import android.webkit.WebViewClient;
 import android.webkit.WebResourceRequest;
 
 import org.json.JSONException;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
@@ -34,6 +40,8 @@ import java.util.ArrayList;
 
 public final class MainActivity extends Activity {
     private static final int OPEN_DOCUMENT_REQUEST = 7;
+    private static final String RECENT_PREFS = "recent";
+    private static final String RECENT_FILES = "files";
     private WebView webView;
     private Uri pendingUri;
 
@@ -85,6 +93,7 @@ public final class MainActivity extends Activity {
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageFinished(WebView view, String url) {
+                sendRecentToWeb();
                 if (pendingUri != null) {
                     Uri uri = pendingUri;
                     pendingUri = null;
@@ -145,6 +154,7 @@ public final class MainActivity extends Activity {
             payload.put("markdown", markdown);
             payload.put("name", displayName(uri));
             payload.put("baseHref", "file".equals(uri.getScheme()) ? baseHref(uri) : "");
+            saveRecent(uri, payload.getString("name"));
             evaluate("window.MDPreview && window.MDPreview.render(" + payload + ");");
         } catch (IOException | JSONException e) {
             JSONObject payload = new JSONObject();
@@ -300,6 +310,67 @@ public final class MainActivity extends Activity {
         }
     }
 
+    @SuppressWarnings("deprecation")
+    private void printDocument() {
+        PrintManager printManager = (PrintManager) getSystemService(Context.PRINT_SERVICE);
+        if (printManager == null) {
+            return;
+        }
+        PrintDocumentAdapter adapter = webView.createPrintDocumentAdapter(displayedTitle());
+        PrintAttributes attributes = new PrintAttributes.Builder()
+            .setMediaSize(PrintAttributes.MediaSize.ISO_A4)
+            .setColorMode(PrintAttributes.COLOR_MODE_COLOR)
+            .build();
+        printManager.print(displayedTitle(), adapter, attributes);
+    }
+
+    private String displayedTitle() {
+        CharSequence title = webView.getTitle();
+        if (title == null || title.toString().trim().isEmpty()) {
+            return "MD Preview";
+        }
+        return title.toString().replace(" - MD Preview", "");
+    }
+
+    private SharedPreferences recentPrefs() {
+        return getSharedPreferences(RECENT_PREFS, MODE_PRIVATE);
+    }
+
+    private JSONArray recentFiles() {
+        String raw = recentPrefs().getString(RECENT_FILES, "[]");
+        try {
+            return new JSONArray(raw);
+        } catch (JSONException ignored) {
+            return new JSONArray();
+        }
+    }
+
+    private void saveRecent(Uri uri, String name) {
+        JSONArray previous = recentFiles();
+        JSONArray next = new JSONArray();
+        String uriText = uri.toString();
+        try {
+            JSONObject current = new JSONObject();
+            current.put("id", uriText);
+            current.put("name", name);
+            next.put(current);
+            for (int i = 0; i < previous.length() && next.length() < 8; i++) {
+                JSONObject item = previous.optJSONObject(i);
+                if (item == null || uriText.equals(item.optString("id"))) {
+                    continue;
+                }
+                next.put(item);
+            }
+        } catch (JSONException ignored) {
+        }
+        recentPrefs().edit().putString(RECENT_FILES, next.toString()).apply();
+        sendRecentToWeb();
+    }
+
+    private void sendRecentToWeb() {
+        evaluate("window.MDPreview && window.MDPreview.setRecent(" + recentFiles() + ");");
+    }
+
     private final class Bridge {
         @JavascriptInterface
         public void openFile() {
@@ -309,6 +380,21 @@ public final class MainActivity extends Activity {
         @JavascriptInterface
         public void openExternal(String url) {
             runOnUiThread(() -> openExternalUrl(url));
+        }
+
+        @JavascriptInterface
+        public void printDocument() {
+            runOnUiThread(MainActivity.this::printDocument);
+        }
+
+        @JavascriptInterface
+        public void getRecent() {
+            runOnUiThread(MainActivity.this::sendRecentToWeb);
+        }
+
+        @JavascriptInterface
+        public void openRecent(String uri) {
+            runOnUiThread(() -> openUri(Uri.parse(uri)));
         }
     }
 }
