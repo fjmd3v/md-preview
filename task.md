@@ -17,7 +17,7 @@
 - [x] Windows 应用内更新不依赖 `WinSparkle.dll`、NSIS 安装器或 `appcast-windows.xml`。
 - [x] 更新点击后使用 GitHub Release asset URL 和 `sha256:` digest，临时 PowerShell 脚本等待旧进程退出后替换 exe 并重启。
 - [x] `./scripts/verify.sh` 通过。
-- [ ] `v1.1.12` GitHub Release 完成，Release asset 包含 macOS DMG、Windows EXE、Linux tarball、`appcast.xml`。
+- [x] `v1.1.12` GitHub Release 完成，Release asset 包含 macOS DMG、Windows EXE、Linux tarball、`appcast.xml`。
 
 ## 执行记录
 
@@ -39,6 +39,21 @@
 
 命令：./scripts/verify.sh
 结果：通过。guard、cargo test、macOS Sparkle 验证、Windows self-update 验证、iOS build/parse、Android debug/release、mobile renderer/release readiness 均通过。
+
+命令：GitHub Actions / Release v1.1.12
+结果：通过。Release、CI、Pages workflows 均 success。
+
+命令：gh api repos/vorojar/md-preview/releases/tags/v1.1.12
+结果：通过。Release assets 精确为 `MD-Preview-macOS-universal.dmg`、`MD-Preview-windows-x64.exe`、`MD-Preview-linux-x64.tar.gz`、`appcast.xml`；Windows EXE 带 `sha256:` digest。
+
+命令：./release-sign.sh v1.1.12
+结果：通过。macOS DMG 和内层 app 已签名、公证、staple，并上传覆盖 Release 资产；`appcast.xml` 已生成上传。
+
+命令：xcrun stapler validate target/MD-Preview-macOS-universal.dmg；codesign --verify --deep --strict；syspolicy_check distribution
+结果：通过。DMG staple 有效，app 签名有效，Apple distribution preflight 通过。
+
+命令：curl https://vorojar.github.io/md-preview/
+结果：通过。官网桌面下载指向 v1.1.12，Windows 安装说明为单文件 EXE。
 ```
 
 ## 风险和假设
