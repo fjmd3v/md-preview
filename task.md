@@ -2,72 +2,70 @@
 
 ## 目标
 
-- 修复桌面预览中带 `<base href>` 的 Markdown 内部锚点点击不跳转的问题。
-- 覆盖用户提供的真实场景：`[需求概述](#需求概述)` 应跳到 `## 需求概述`。
-- 发布 `1.1.16`，并确认 GitHub Release、macOS 签名公证、Sparkle appcast 更新链路正常。
-- 为用户准备可肉眼验证的旧版更新流程，不覆盖用户当前 `/Applications` 中的最新版。
+- 修复 macOS 更新流程中 Sparkle `Autoupdate` 被系统“隐私与安全性 / App Management”阻止的问题。
+- 保留更新提示能力，但默认点击 `Update` 时打开 GitHub DMG 下载，避免再次触发被拦截的原生安装器。
+- 修复首页 Recent 项过多时顶掉顶部空状态说明的问题，并保持 Recent 不出现内部滚动条。
+- 发布 `v1.1.17`，确认 GitHub Release、签名公证、Gatekeeper、appcast 和线上资产正常。
 
 ## 非目标
 
-- 不改变相对图片、相对链接和本地资源解析方式。
-- 不改变 GitHub Actions 产物格式和 Release asset 命名。
-- 不减少 Apple notary、Gatekeeper 或 Sparkle appcast 验收步骤。
+- 不在本次继续强推 Sparkle 原生自动替换安装；该路径只保留给受控环境变量测试。
+- 不改变 Windows 自更新逻辑。
+- 不改变 Markdown 渲染、搜索、锚点跳转和移动端功能。
 
 ## 验收场景
 
-- [x] 标题仍会生成稳定 id，中文标题 `## 需求概述` 生成可匹配的 `id="需求概述"`。
-- [x] 在页面存在 `<base href="file://...">` 时，点击 `#%E9%9C%80...` 这类编码后的中文锚点不会跳成 file URL，而是在当前预览内滚动。
-- [x] 点击锚点逻辑使用真实 preview 增强脚本验证，不只检查字符串。
-- [x] 现有搜索、更新按钮、表格增强、数学公式和 Mermaid 增强入口不受影响。
-- [x] `scripts/verify.sh` 全量通过。
-- [x] `v1.1.16` GitHub Release 完成，Release asset 包含 macOS DMG、Windows EXE、Linux tarball、`appcast.xml`。
-- [x] `scripts/release.sh v1.1.16` 完成，macOS DMG 和内层 app 已签名、公证、staple。
-- [x] 准备旧版 `1.1.15` 临时副本，用于肉眼点击更新到 `1.1.16`。
+- [x] 空状态有 Recent 时，图标、说明、Open File 和 Recent 都可见，Recent 不使用内部滚动条。
+- [x] 更新按钮显示为 `↻ Update`，更新 label 不会变成 `Update Update`。
+- [x] macOS 默认 `nativeUpdater: false`，点击更新按钮发送 `open-url:<DMG download url>`，不发送 `check-updates`。
+- [x] Sparkle installer 只在 `MD_PREVIEW_ENABLE_SPARKLE_INSTALLER=1` 时启用。
+- [x] macOS bundle 写入 `SUEnableInstallerLauncherService=true`。
+- [x] `v1.1.17` GitHub Release 完成，Release asset 包含 macOS DMG、Windows EXE、Linux tarball、`appcast.xml`。
+- [x] macOS DMG 和内层 app 已签名、公证、staple，并通过 Gatekeeper 校验。
 
 ## 执行记录
 
-- [x] 在 `assets/enhance/preview-enhance.js` 中拦截 `#preview a[href^="#"]` 点击，解码 fragment 后用 `document.getElementById()` 定位并 `scrollIntoView()`。
-- [x] 保留 `<base href>`，避免破坏本地相对资源。
-- [x] 新增 `scripts/verify-anchor-navigation.mjs`，用 Playwright 验证带 `file://` base URL 的中文锚点点击。
-- [x] 将锚点点击验证接入 `scripts/verify.sh`。
-- [x] 版本号更新到 `1.1.16` 并记录 changelog。
+- [x] 将 macOS Sparkle installer 默认关闭，保留 `MD_PREVIEW_ENABLE_SPARKLE_INSTALLER=1` 测试开关。
+- [x] macOS 更新按钮默认打开 GitHub Release DMG 下载地址。
+- [x] 新增 macOS update fallback 的 Node 验证，防止回退到被阻止的 `check-updates` 路径。
+- [x] 在 `bundle.sh` 中添加 `SUEnableInstallerLauncherService`。
+- [x] 调整 `↻ Update` 按钮结构和 label 更新逻辑。
+- [x] 调整空状态 Recent 布局，去掉内部滚动条。
+- [x] 版本号更新到 `1.1.17`。
+- [x] 发布 `v1.1.17` 并更新 Release notes，说明旧版如遇 “Autoupdate was blocked” 需手动安装一次 DMG。
 
 ## 验证记录
 
 ```text
-命令：cargo test generated_heading_ids -- --nocapture
-结果：通过。2/2 tests passed。
-
-命令：cargo test page_blocks_native_preview_reload_paths -- --nocapture
-结果：通过。1/1 tests passed。
-
-命令：NODE_PATH=... node scripts/verify-anchor-navigation.mjs
-结果：通过。[anchor-verify] OK。
-
 命令：cargo fmt --check
 结果：通过。
 
 命令：./scripts/verify.sh
 结果：通过。guard、cargo test、anchor navigation、Sparkle update、Windows self-update、iOS build/parse、Android debug/release、mobile renderer/release readiness 均通过。
 
-命令：scripts/release.sh v1.1.16
-结果：通过。脚本完成验证、tag 创建、master/tag 推送、GitHub Release workflow 等待、macOS 签名公证、DMG staple、GitHub Release asset 覆盖上传、appcast 上传和最终验收。
+命令：scripts/release.sh v1.1.17
+结果：GitHub Actions、master/tag 推送和 Release 创建通过；第一次 Apple notary 在签名阶段因 NSURLErrorDomain Code=-1001 超时中断。
 
-命令：gh release view v1.1.16 -R vorojar/md-preview --json url,assets
+命令：./release-sign.sh v1.1.17
+结果：重试通过。内层 .app 和外层 DMG 均 signed、notarized、stapled；签名后 DMG 已覆盖上传到 GitHub Release；appcast.xml 已生成并上传。
+
+命令：gh release view v1.1.17 -R vorojar/md-preview --json url,assets
 结果：通过。Release asset 包含 appcast.xml、MD-Preview-linux-x64.tar.gz、MD-Preview-macOS-universal.dmg、MD-Preview-windows-x64.exe。
 
-命令：xcrun stapler validate target/MD-Preview-macOS-universal.dmg；codesign --verify --deep --strict --verbose=2 target/MD\ Preview.app；spctl -a -t open --context context:primary-signature target/MD-Preview-macOS-universal.dmg
-结果：通过。DMG staple 验证成功，内层 app codesign 验证成功，Gatekeeper primary-signature 验收通过。
+命令：xcrun stapler validate target/MD-Preview-macOS-universal.dmg
+结果：通过。The validate action worked。
 
-命令：curl -fsSL https://github.com/vorojar/md-preview/releases/download/v1.1.16/appcast.xml
-结果：通过。线上 appcast 指向 MD Preview 1.1.16、v1.1.16 macOS DMG，并包含 sparkle:edSignature。
+命令：codesign --verify --deep --strict --verbose=2 target/MD\ Preview.app
+结果：通过。app valid on disk，satisfies Designated Requirement。
 
-命令：下载 v1.1.15 DMG 到 /tmp/md-preview-update-test.qD1lKw，复制旧版 App，并用 open -n --env MD_PREVIEW_ALLOW_NON_APPLICATIONS_UPDATER=1 启动。
-结果：通过。旧版临时副本路径：/tmp/md-preview-update-test.qD1lKw/MD Preview 1.1.15.app；版本确认为 1.1.15；进程 PID 782；用于肉眼点击更新到 1.1.16。
+命令：spctl -a -t open --context context:primary-signature target/MD-Preview-macOS-universal.dmg
+结果：通过。
+
+命令：curl -fsSL https://github.com/vorojar/md-preview/releases/latest/download/appcast.xml
+结果：通过。线上 appcast 指向 MD Preview 1.1.17、v1.1.17 macOS DMG，并包含 sparkle:edSignature。
 ```
 
 ## 风险和假设
 
-- 这次修复只拦截当前文档内部 `#fragment`，普通外部 URL 和相对资源继续按原逻辑处理。
-- 肉眼更新测试会使用 `1.1.15` 的临时副本和 `MD_PREVIEW_ALLOW_NON_APPLICATIONS_UPDATER=1`，避免覆盖当前正式安装的最新版。
+- 已发布的旧版 `1.1.16` 内置更新按钮仍可能走旧 Sparkle 路径；若用户遇到系统阻止，需要从 `v1.1.17` Release 手动下载 DMG 安装一次。安装 `v1.1.17` 后，后续点击 `Update` 默认打开 DMG 下载，不再调用被阻止的安装器。
 - GitHub Actions 当前有 Node.js 20 deprecation annotation 和 windows-latest 重定向 notice，不影响本次 release，但需要后续升级 workflow。
