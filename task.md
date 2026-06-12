@@ -33,7 +33,7 @@
 - [x] TestFlight build `1.0.7 (8)` 上传成功并处理为 `VALID`。
 - [x] App Store version `1.0.7` 绑定 build `eadcd636-878e-40a4-95ee-f9ce93b86133`。
 - [x] App Store metadata、隐私政策 URL、支持 URL、分类、内容权利、年龄分级、免费价格和 175 个国家/地区销售范围已配置。
-- [x] iPhone 6.5-inch 与 iPad Pro 12.9-inch 截图各 3 张已上传并返回 `COMPLETE`。
+- [x] iPhone 6.5-inch 与 iPad Pro 12.9-inch 截图各 3 张已重新生成并上传，重点展示 Mermaid diagrams、KaTeX notes、搜索和 README 渲染，均返回 `COMPLETE`。
 - [x] App Privacy 已发布为“未收集数据”。
 - [ ] App Review 联系人信息待用户提供：名字、姓氏、邮箱、电话号码。
 
@@ -58,7 +58,8 @@
 - [x] 配置分类：primary `PRODUCTIVITY`、secondary `DEVELOPER_TOOLS`。
 - [x] 配置年龄分级为 safe defaults：不含广告、赌博、聊天、用户生成内容、不受限网页访问等。
 - [x] 配置免费价格，并通过网页初始化所有 175 个国家/地区发布时供应。
-- [x] 生成并上传 App Store 截图到 localization `dde3155e-18ac-46b5-a814-d3db22746d35`。
+- [x] 新增 `scripts/generate-app-store-screenshots.mjs`，使用真实 `mobile/shared/preview.html`、设备 CSS viewport + DPR、真实 Mermaid/KaTeX DOM 生成 App Store 截图。
+- [x] 重新生成并上传 App Store 截图到 localization `dde3155e-18ac-46b5-a814-d3db22746d35`，替换旧截图。
 - [x] App Privacy 网页问卷选择“不收集数据”，并发布隐私答复。
 - [x] App Review 登录信息改为“不需要登录”，并补充 reviewer notes。
 
@@ -140,6 +141,15 @@
 命令：asc screenshots upload --version-localization dde3155e-18ac-46b5-a814-d3db22746d35 --path target/app-store-screenshots/{iphone,ipad} ...
 结果：通过。iPhone set `22e09205-308d-41f8-8cb9-c87030f39ef9`、iPad set `e380c0b0-559d-4135-89e3-e9ae9600ed14`，6 张截图状态均为 `COMPLETE`。
 
+命令：NODE_PATH="$TMP_PLAYWRIGHT_DIR/node_modules" node scripts/generate-app-store-screenshots.mjs
+结果：通过。重新生成 iPhone `1284x2778` 与 iPad `2048x2732` 截图各 3 张：`01-mermaid-katex-notes.png`、`02-search-in-document.png`、`03-readme-rendering.png`。生成时强制等待 Mermaid SVG、KaTeX、搜索高亮、alert/highlight/table/code DOM 出现。
+
+命令：asc screenshots validate --path target/app-store-screenshots/iphone --device-type APP_IPHONE_65 && asc screenshots validate --path target/app-store-screenshots/ipad --device-type APP_IPAD_PRO_3GEN_129
+结果：通过。6 张新截图均符合 Apple 尺寸要求。
+
+命令：asc screenshots upload --version-localization dde3155e-18ac-46b5-a814-d3db22746d35 --path target/app-store-screenshots/{iphone,ipad} --replace
+结果：通过。旧截图被替换；ASC 当前列表只保留 `01-mermaid-katex-notes.png`、`02-search-in-document.png`、`03-readme-rendering.png`，iPhone/iPad 共 6 张均为 `COMPLETE`。
+
 命令：App Store Connect 网页 / Pricing and Availability
 结果：通过。初始化所有 175 个国家/地区发布时供应。
 
@@ -154,6 +164,7 @@
 
 - App Store Connect app record 已创建，但 `MD Preview`、`Markdown Preview` 和 `Markdown Previewer` 均被 Apple 判定名称占用；当前公开名称使用 `Local Markdown Preview`。
 - TestFlight build 已上传并处理为 `VALID`；App Store metadata、截图、隐私、价格和销售范围已补齐。
+- 第一版截图的根因是把 App Store 目标像素尺寸当作浏览器 CSS viewport 截图，导致 iPad 画布比例失真、内容像窄屏手机稿；已改为真实设备 CSS viewport + DPR，并保留脚本防止回退。
 - 正式提交 App Store 前仍需用户提供真实 App Review 联系人：名字、姓氏、邮箱、电话号码。未获得用户明确提供前，不擅自填写或提交。
 - 真机已能安装启动 app，但 Open In / 分享面板真实文件流仍建议用户在手机上用 Files、微信、企业微信各测一次。
 
