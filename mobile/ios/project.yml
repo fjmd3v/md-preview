@@ -23,6 +23,8 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.mdpreview.mobile
+        DEVELOPMENT_TEAM: BUR55497B4
+        CODE_SIGN_STYLE: Automatic
         INFOPLIST_FILE: MDPreviewMobile/Info.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1,2"

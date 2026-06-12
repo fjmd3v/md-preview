@@ -1,15 +1,16 @@
-# 当前任务：iOS TestFlight/App Store 发布前准备
+# 当前任务：iOS signing / TestFlight 发布准备
 
 ## 目标
 
 - 尽量完成 MD Preview iOS 版本发布前的本机准备工作。
 - 将 iOS 版本号对齐到当前 mobile release 线。
 - 验证 iOS 构建、归档、模拟器安装启动和移动端渲染。
-- 明确剩余阻塞项：真机连接、iOS 签名凭据、App Store Connect 凭据。
+- 配好 iOS signing team、App Store Connect API key、本机开发签名、真机安装和分发 IPA。
+- 明确剩余阻塞项：App Store Connect app record。
 
 ## 非目标
 
-- 不在 ASC 未登录、签名凭据缺失、真机不可用时强行上传 TestFlight。
+- 不使用 experimental `asc web` 私有接口自动创建 App Store Connect app record，除非用户显式确认。
 - 不直接提交 App Store 审核；正式提交需要额外确认、metadata 和截图。
 - 不修改 Android 发布配置。
 
@@ -22,15 +23,24 @@
 - [x] iOS generic Release archive 在 `CODE_SIGNING_ALLOWED=NO` 下成功，证明代码和 archive 路径可用。
 - [x] mobile renderer golden 验证通过。
 - [x] mobile release readiness 通过。
-- [x] 记录 TestFlight/App Store 上传阻塞项。
+- [x] App Store Connect API key 存入系统钥匙串并通过网络校验。
+- [x] `app.mdpreview.mobile` 显式 bundle id 创建成功。
+- [x] Xcode automatic signing 配置 Team `BUR55497B4`，真机构建、安装、启动成功。
+- [x] App Store Connect 分发 IPA 导出成功，签名为 `Apple Distribution`。
+- [x] 记录 TestFlight/App Store 上传剩余阻塞项。
 
 ## 执行记录
 
 - [x] `mobile/ios/project.yml` 版本从 `1.0.6` build `7` 更新为 `1.0.7` build `8`。
+- [x] `mobile/ios/project.yml` 配置 `DEVELOPMENT_TEAM: BUR55497B4` 和 `CODE_SIGN_STYLE: Automatic`。
 - [x] 通过 `xcodegen generate` 重新生成本地 Xcode project。
 - [x] 构建并安装到 iPhone 17 Pro Simulator，启动 bundle id `app.mdpreview.mobile`。
 - [x] 截图保存到 `target/ios-qa/ios-simulator-launch.png`。
 - [x] 生成无签名 Release archive：`mobile/ios/build/MDPreviewMobile.xcarchive`。
+- [x] 使用用户提供的新 ASC API key 登录 `asc`，凭据存储在系统钥匙串。
+- [x] 创建 bundle id：`6P439S39PG` / `app.mdpreview.mobile` / Team `BUR55497B4`。
+- [x] Xcode 自动创建 Apple Development 证书和开发 profile，真机安装到连接的 iPhone。
+- [x] 导出 App Store Connect IPA：`mobile/ios/build/export/MD Preview.ipa`。
 
 ## 验证记录
 
@@ -42,7 +52,10 @@
 结果：未找到 iOS Apple Development / Apple Distribution 证书；当前只有 macOS Developer ID Application。
 
 命令：asc auth status
-结果：未登录 App Store Connect；System Keychain 中 credentials 为空，且未设置完整 ASC 环境变量。
+结果：通过。新 ASC API key 已存入 System Keychain，并设为默认 ASC profile。
+
+命令：asc bundle-ids create --identifier app.mdpreview.mobile --name "MD Preview Mobile" --platform IOS
+结果：通过。创建 bundle id `6P439S39PG`，identifier `app.mdpreview.mobile`，seed/team `BUR55497B4`。
 
 命令：cd mobile/ios && xcodegen generate && xcodebuild -project MDPreviewMobile.xcodeproj -scheme MDPreviewMobile -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.5' CODE_SIGNING_ALLOWED=NO build
 结果：通过。
@@ -62,15 +75,24 @@
 命令：cd mobile/ios && xcodebuild clean archive -project MDPreviewMobile.xcodeproj -scheme MDPreviewMobile -configuration Release -destination 'generic/platform=iOS' -archivePath "$PWD/build/MDPreviewMobile.xcarchive" CODE_SIGNING_ALLOWED=NO
 结果：通过。无签名 archive 生成成功；archive Info.plist 确认为 version `1.0.7` build `8`。
 
+命令：cd mobile/ios && xcodebuild -project MDPreviewMobile.xcodeproj -scheme MDPreviewMobile -destination 'id=<CONNECTED_IPHONE_UDID>' -allowProvisioningUpdates -allowProvisioningDeviceRegistration -authenticationKeyPath <ASC_KEY_PATH> -authenticationKeyID <ASC_KEY_ID> -authenticationKeyIssuerID <ASC_ISSUER_ID> build
+结果：通过。真机构建成功，签名身份为 Apple Development API-created certificate，provisioning profile 为 `iOS Team Provisioning Profile: *`。
+
+命令：xcrun devicectl device install app --device <CONNECTED_IPHONE_UDID> <MDPreviewMobile.app> && xcrun devicectl device process launch --device <CONNECTED_IPHONE_UDID> app.mdpreview.mobile
+结果：通过。真机安装并启动成功。
+
+命令：xcodebuild clean archive ... && xcodebuild -exportArchive ... -exportOptionsPlist target/ios-qa/ExportOptions-app-store-connect.plist
+结果：通过。导出 `mobile/ios/build/export/MD Preview.ipa`。IPA 内 app 签名为 `Apple Distribution: Ningbo Huli Huli Network Technology Co., Ltd. (BUR55497B4)`，profile 为 `iOS Team Store Provisioning Profile: app.mdpreview.mobile`。
+
 命令：./scripts/verify.sh
 结果：通过。覆盖 release signing contract、cargo test、anchor navigation、Sparkle update、Windows self-update、iOS xcodegen/build/parse、Android debug/release、mobile renderer、release readiness。
 ```
 
 ## 风险和假设
 
-- 真机目前仍是 Xcode Offline/unavailable，无法安装到真实 iPhone 验收 Open In / 分享面板流程。
-- 未配置 iOS signing team、Apple Development/Distribution 证书和 provisioning profile，无法导出可上传 TestFlight 的 IPA。
-- `asc` CLI 已安装，但未登录 App Store Connect，无法解析 app id、TestFlight group、上传 build 或检查 submission health。
+- App Store Connect 里还没有 `app.mdpreview.mobile` 的 app record；官方 API key 不能创建 app record，`asc web apps create` 属于 experimental/private web API，需用户显式确认或用户在网页中手动创建。
+- 创建 app record 后才能获得 App Store Connect app ID、TestFlight group，并执行 `asc publish testflight --app <APP_ID> --ipa "mobile/ios/build/export/MD Preview.ipa"`。
+- 真机已能安装启动 app，但 Open In / 分享面板真实文件流仍建议用户在手机上用 Files、微信、企业微信各测一次。
 
 ---
 
