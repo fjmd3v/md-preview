@@ -64,6 +64,7 @@
 - [x] App Review 登录信息改为“不需要登录”，并补充 reviewer notes。
 - [x] App Review 联系人信息已按用户提供内容写入 App Store Connect，不在仓库记录明文。
 - [x] 提交 App Store 审核，submission id `5f1e7fbe-9f52-46c1-bd7b-011d38395301`。
+- [x] App Store version copyright 已从公司名改为 `2026 Vorojar`，审核状态保持 `WAITING_FOR_REVIEW`。
 
 ## 验证记录
 
@@ -175,6 +176,12 @@
 
 命令：asc review status --app 6779451523 --version-id e1e365a2-150c-4348-9226-7f5c13ed8b66 --platform IOS --output json
 结果：通过。版本状态 `WAITING_FOR_REVIEW`，next action 为等待 App Store review outcome。
+
+命令：asc versions update --version-id e1e365a2-150c-4348-9226-7f5c13ed8b66 --copyright "2026 Vorojar"
+结果：通过。Apple 接受更新，版本状态仍为 `WAITING_FOR_REVIEW`。
+
+命令：asc versions list --app 6779451523 --platform IOS --version 1.0.7 --output json
+结果：通过。确认 `copyright` 为 `2026 Vorojar`，`appStoreState` 为 `WAITING_FOR_REVIEW`。
 ```
 
 ## 风险和假设
