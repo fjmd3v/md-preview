@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MD Preview — Native Markdown Previewer for AI-Generated Docs</title>
 <meta name="description" content="Free, open-source Markdown preview app for AI-generated docs, README files, plans, Mermaid diagrams, and KaTeX notes. Open File, recent files, search, print, and stable builds for macOS, Windows, Linux, iOS, and Android. Rust + system WebView, no Electron.">
-<meta name="keywords" content="markdown preview, markdown viewer, markdown reader, android markdown viewer, AI generated docs, Claude Code markdown, Codex markdown, Cursor markdown, Mermaid preview, KaTeX preview, lightweight markdown app, rust markdown, native markdown viewer, offline markdown, electron alternative, wry, pulldown-cmark">
+<meta name="keywords" content="markdown preview, markdown viewer, markdown reader, ios markdown viewer, iphone markdown viewer, ipad markdown viewer, android markdown viewer, AI generated docs, Claude Code markdown, Codex markdown, Cursor markdown, Mermaid preview, KaTeX preview, lightweight markdown app, rust markdown, native markdown viewer, offline markdown, electron alternative, wry, pulldown-cmark">
 <meta name="author" content="vorojar">
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://vorojar.github.io/md-preview/">
@@ -340,8 +340,6 @@ footer a { color: inherit; }
     <a class="cta-primary" href="https://github.com/vorojar/md-preview/releases/latest" data-en="Download Desktop" data-zh="下载桌面版"></a>
     <a class="cta-secondary" href="https://apps.apple.com/cn/app/local-markdown-preview/id6779451523" data-en="Get iOS App" data-zh="获取 iOS 版"></a>
     <a class="cta-secondary" href="https://github.com/vorojar/md-preview/releases/latest/download/MD-Preview-Android.apk" data-en="Download Android" data-zh="下载 Android"></a>
-    <a class="cta-secondary" href="https://github.com/vorojar/md-preview" id="star-btn">&#9733; Star on GitHub</a>
-    <a class="cta-secondary" href="./rust-webview-ai-docs.html" data-en="Engineering Note" data-zh="工程说明"></a>
   </div>
 </header>
 
@@ -501,15 +499,6 @@ footer a { color: inherit; }
   apply(lang);
 })();
 
-// Dynamic star count
-fetch("https://api.github.com/repos/vorojar/md-preview")
-  .then(function(r){return r.json()})
-  .then(function(d){
-    if(d.stargazers_count!==undefined){
-      var btn=document.getElementById("star-btn");
-      btn.innerHTML="\u2605 Star "+d.stargazers_count;
-    }
-  }).catch(function(){});
 </script>
 
 </body>
