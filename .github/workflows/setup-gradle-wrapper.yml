@@ -1,0 +1,53 @@
+name: Setup Gradle Wrapper
+
+on:
+  workflow_dispatch:
+
+jobs:
+  setup-wrapper:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Generate Gradle Wrapper (if missing)
+        working-directory: ./mobile/android
+        run: |
+          # Run Gradle Wrapper Task
+          ./gradlew wrapper --gradle-version 8.13 || gradle wrapper --gradle-version 8.13
+          # Make Script Executable
+          chmod +x gradlew
+
+      - name: Commit and Push Gradle Wrapper Files (if changed)
+        working-directory: ./mobile/android
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          
+          # Add Wrapper Files
+          git add gradlew gradlew.bat gradle/wrapper/gradle-wrapper.jar gradle/wrapper/gradle-wrapper.properties
+          
+          # Commit Only if Changes Exist
+          if git diff --staged --quiet; then
+            echo "No changes to Gradle Wrapper files."
+          else
+            git commit -m "chore: add/update Gradle Wrapper via GitHub Actions"
+            git push
+            echo "Gradle Wrapper files committed and pushed."
+          fi
