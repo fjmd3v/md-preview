@@ -1,4 +1,4 @@
-# .github/workflows/android-build.yml
+# .github/workflows/android-build-apk-debug.yml
 name: Android Build APK (Debug)
 
 on:
@@ -26,3 +26,11 @@ jobs:
       - name: Build with Gradle
         working-directory: ./mobile/android
         run: ./gradlew build
+
+      - name: Upload Debug APK Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-debug.apk
+          path: ./mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 90
+          archive: false
