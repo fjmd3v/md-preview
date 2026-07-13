@@ -53,14 +53,14 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="file" android:mimeType="*/*" android:pathPattern=".*\\.md" />
-                <data android:scheme="file" android:mimeType="*/*" android:pathPattern=".*\\.markdown" />
-                <data android:scheme="file" android:mimeType="*/*" android:pathPattern=".*\\.mdown" />
-                <data android:scheme="file" android:mimeType="*/*" android:pathPattern=".*\\.mkd" />
-                <data android:scheme="file" android:mimeType="*/*" android:pathSuffix=".md" />
-                <data android:scheme="file" android:mimeType="*/*" android:pathSuffix=".markdown" />
-                <data android:scheme="file" android:mimeType="*/*" android:pathSuffix=".mdown" />
-                <data android:scheme="file" android:mimeType="*/*" android:pathSuffix=".mkd" />
+                <data android:scheme="file" android:host="*" android:mimeType="*/*" android:pathPattern=".*\\.md" />
+                <data android:scheme="file" android:host="*" android:mimeType="*/*" android:pathPattern=".*\\.markdown" />
+                <data android:scheme="file" android:host="*" android:mimeType="*/*" android:pathPattern=".*\\.mdown" />
+                <data android:scheme="file" android:host="*" android:mimeType="*/*" android:pathPattern=".*\\.mkd" />
+                <data android:scheme="file" android:host="*" android:mimeType="*/*" android:pathSuffix=".md" />
+                <data android:scheme="file" android:host="*" android:mimeType="*/*" android:pathSuffix=".markdown" />
+                <data android:scheme="file" android:host="*" android:mimeType="*/*" android:pathSuffix=".mdown" />
+                <data android:scheme="file" android:host="*" android:mimeType="*/*" android:pathSuffix=".mkd" />
             </intent-filter>
 
             <intent-filter android:priority="1000">
