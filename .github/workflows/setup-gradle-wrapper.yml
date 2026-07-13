@@ -12,34 +12,33 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup JDK
-        uses: actions/setup-java@v5
+      - name: Set up JDK
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
           cache: 'gradle'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v6
+        uses: gradle/actions/setup-gradle@v4
 
-      - name: Generate Gradle Wrapper (if missing)
+      - name: Generate Gradle Wrapper
         working-directory: ./mobile/android
         run: |
-          # Run Gradle Wrapper Task
-          gradle wrapper --gradle-version 8.13 --distribution-type bin
-          # Make Script Executable
+          # Use system Gradle to bootstrap the wrapper with a compatible version
+          gradle wrapper --gradle-version 8.10 --distribution-type bin
           chmod +x gradlew
 
-      - name: Verify Gradle Wrapper
+      - name: Verify Wrapper
         working-directory: ./mobile/android
         run: ls -la gradlew gradle/wrapper/
 
-      - name: Commit and Push Gradle Wrapper Files
+      - name: Commit and push Gradle Wrapper files
         working-directory: ./mobile/android
         run: |
           git config user.name "github-actions[bot]"
