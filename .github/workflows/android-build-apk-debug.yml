@@ -1,11 +1,11 @@
 # .github/workflows/android-build.yml
-name: Android Build
+name: Android Build APK (Debug)
 
 on:
   workflow_dispatch:
   #push:
     #branches: [ main ]
-  pull_request:
+  #pull_request:
 
 jobs:
   build:
