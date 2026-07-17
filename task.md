@@ -18,7 +18,7 @@
 - [x] 官网首屏、功能区、安装说明及元数据均包含 v1.2.0 新能力，桌面和移动视口无溢出或遮挡。
 - [x] README.md 与 README_zh.md 同步描述多标签、恢复、缺失文件、Finder 操作和快捷键。
 - [x] 应用 About 源码包含新定位与 What's New 入口；Rust 测试和完整验证通过。
-- [ ] GitHub About 更新；官网线上内容与提交一致。
+- [x] GitHub About 更新；官网线上内容与提交一致。
 - [x] #28 有发布说明并关闭；#33 有明确状态回复并保持开放。
 
 ## 补发验证记录
@@ -30,6 +30,8 @@
 - `cargo fmt --check`、`cargo check`、`cargo test`（28/28）及 `./scripts/verify.sh` 全部通过。
 - GitHub About 已更新为多标签、会话恢复、macOS Finder 工作流与本地优先定位。
 - Issue #28 已回复并按 completed 关闭；#33 已回复并保持开放。
+- PR #34 在 macOS、Linux、Windows CI 全绿后合并；GitHub Pages 构建提交为 `5f2b9dd`。
+- 线上 `index.html` 与 `hero.jpg` 分别和仓库文件哈希完全一致；线上桌面与移动视口复验通过。
 
 ---
 
