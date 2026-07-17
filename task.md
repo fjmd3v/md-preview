@@ -29,7 +29,7 @@
 - [x] Finder 扩展打入 app bundle，使用稳定 bundle id，可被 `pluginkit` 枚举；主应用正常预览不依赖扩展启用。
 - [x] `cargo test`、`cargo check`、`./scripts/verify.sh` 和 macOS universal Release 构建全部通过。
 - [x] 真实 macOS UI 验证顶部标签、溢出、暗色/亮色、缺失状态、编辑切换与窗口关键尺寸，无文字遮挡。
-- [ ] 最终 DMG 与内部 app/appex 通过签名、公证、staple、`spctl`；GitHub Release 含三平台资产、appcast 和来自本版本 CHANGELOG 的完整说明。
+- [x] 最终 DMG 与内部 app/appex 通过签名、公证、staple、`spctl`；GitHub Release 含三平台资产、appcast 和来自本版本 CHANGELOG 的完整说明。
 
 ## 最小验证命令
 
@@ -69,4 +69,9 @@ pluginkit -m -A -p com.apple.FinderSync | grep MDPreviewFinder
 - 真实缺失验收：删除后台文件后点击标签，标签保留并显示“重新定位/关闭标签”。
 - 真实视觉验收：亮色、暗色、约 560px 紧凑窗口、7 个含长文件名标签溢出均无重叠；暗色 Alert 修复后复验通过。
 - Finder 系统验收：`pluginkit` 显示 `+ com.mdpreview.app.FinderExtension(1.2.0)`；Finder 空白处右键显示完整菜单；创建 `新建.md` 后应用进入聚焦源码编辑，`Cmd+S` 写盘内容核对通过。
-- 待完成：干净副本正式发布、CI、Developer ID 签名、公证/staple、Gatekeeper 与 GitHub Release 资产/说明复验。
+- 干净副本正式发布：GitHub Actions `29553519458` 的 Linux、Windows、macOS 构建与 Release 发布全部成功。
+- Apple 公证：内部 app submission `4af9070d-c93f-481c-ac5c-ce373caa52cd`、外层 DMG submission `9ddb3b73-225f-4df1-824e-35a9b4d9f20d` 均为 `Accepted`，两者 staple 成功。
+- 最终产物验收：已安装 `/Applications/MD Preview.app` 为 `1.2.0`，主程序与 Finder extension 均为 `x86_64 arm64`；`codesign --verify --deep --strict`、DMG `stapler validate` 与 app/DMG `spctl` 全部通过，来源为 `Notarized Developer ID`。
+- 已安装公证版真实运行：隔离会话启动两份文档，顶部标签、活动文档、正文与窗口标题正确，应用正常退出。
+- Finder 扩展最终状态：`+ com.mdpreview.app.FinderExtension(1.2.0)`；旧独立扩展仅禁用保留，避免重复菜单。
+- GitHub Release `v1.2.0` 已发布，包含 Linux、Windows、macOS DMG 与 `appcast.xml`；Release 正文与 `CHANGELOG.md` 的六条版本说明一致。
