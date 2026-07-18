@@ -1,374 +1,174 @@
-# 当前任务：修复 macOS Cmd+W 并发布 v1.1.25
+# 当前任务：新建 Markdown、可靠自动保存与 v1.3.0 发布
 
 ## 目标
 
-- 修复 GitHub issue #32：macOS 端用 Finder 双击打开 Markdown 后，`Command+W` 应能按系统习惯关闭预览窗口。
-- 发布桌面版 `v1.1.25`，包含签名、公证、staple、Release notes、issue 回复和关闭。
+- 标签栏 `+` 不再重复“打开文件”，改为新建 Markdown；选择保存位置后创建新标签并直接进入编辑。
+- 编辑内容停止输入后自动保存；预览、切换标签、关闭标签、关闭窗口和退出应用前都强制刷新待保存内容。
+- 保存失败时不关闭、不切换、不丢编辑内容，并给出明确错误。
+- 检查应用内 GitHub Release 查询、平台资产选择、Sparkle appcast 与签名更新入口，确保 v1.3.0 发布后可被旧版本发现。
+- 完成单测、完整验证、真实 macOS UI、签名、公证、Gatekeeper、Release assets 与应用内更新闭环后发布 v1.3.0。
 
 ## 非目标
 
-- 不调整多窗口模型；当前仍按单窗口预览器处理，关闭窗口等同退出本次预览会话。
-- 不处理 #29、#28、#19。
+- 不实现内存态“未命名文档”、草稿云同步、富文本编辑或文件重命名。
+- 不改变 Finder 右键 Text / JSON / HTML 的行为，也不改移动端单文档预览流程。
+- 不提交 App Store Review、推广资料、AGENTS.md 及其他既有未提交内容。
 
 ## 验收场景
 
-- [x] macOS File 菜单包含标准 `Close Window`，快捷键为 `Cmd+W`，走 AppKit `performClose:` 响应链。
-- [x] 现有打开、搜索、编辑、保存、打印快捷键不回退。
-- [x] `scripts/verify.sh` 通过。
-- [ ] GitHub Release `v1.1.25` 发布说明来自 `CHANGELOG.md` 对应段落，macOS DMG 已签名、公证并 staple。
-- [ ] issue #32 已用中文回复并关闭。
+- [x] `+` 与 `Cmd/Ctrl+N` 打开新建 Markdown 保存面板；默认目录跟随当前文档，确认后创建 `.md` 标签并聚焦编辑器；取消时不创建文件或标签。
+- [x] 文件夹按钮与 `Cmd/Ctrl+O` 仍只打开已有文件，和 `+` 语义不重复。
+- [x] 输入停止约 700ms 后内容自动落盘，标签 dirty 状态恢复为已保存；`Cmd/Ctrl+S` 仍立即保存。
+- [x] 未点击“预览”时，切换标签、标签 `×`、`Cmd/Ctrl+W`、窗口关闭与 macOS `Cmd+Q` 都保存成功；重开文件内容存在。
+- [x] 保存失败会阻止切换或关闭，编辑器内容和 dirty 状态保留，用户可修复后重试。
+- [x] 外部文件变化不会被待保存编辑静默覆盖；自写 watcher 事件不会破坏光标或正文。
+- [x] GitHub Release 查询忽略 mobile、draft 与 prerelease，能选择正确平台资产；最新版显示“已是最新”，新版本走受信 URL 与原生更新入口。
+- [x] `cargo test`、`cargo check`、`./scripts/verify.sh`、三平台 CI 与真实 macOS UI 全部通过。
+- [x] macOS DMG 及内部 app/appex 完成 Developer ID 签名、公证、staple、Gatekeeper 与 Sparkle appcast 验证；Release 正文来自 CHANGELOG。
 
-## 执行记录
+## 最小验证命令
 
-- [x] 确认 #32 为真实用户反馈：macOS 缺少轻量文件窗口常见的 `Command+W` 关闭行为。
-- [x] 在 macOS 原生 File 菜单中新增 `Close Window` / `Cmd+W`，action 使用系统 `performClose:`。
-- [x] 更新版本号、CHANGELOG、README 快捷键和官网结构化版本号。
-
-## 验证记录
-
-```text
-cargo check
+```bash
 cargo test
+cargo check
 ./scripts/verify.sh
-
-结果：通过。统一验证覆盖桌面快捷键静态检查、cargo test、桌面锚点/搜索/Sparkle 更新、Windows 自更新、iOS 生成/构建、Android debug/release 构建和移动端渲染检查。
+./bundle.sh
+codesign --verify --deep --strict --verbose=2 "target/MD Preview.app"
 ```
+
+## 风险与假设
+
+- MD Preview 当前所有标签都是文件背书；新建流程使用保存面板先确定路径，避免引入无法恢复的内存草稿。
+- 自动保存会增加写盘频率，必须去抖并继续抑制自写 watcher；外部修改与本地 dirty 冲突时以不覆盖用户编辑为优先。
+- 正常退出保存需要覆盖 macOS `Cmd+Q` 真实路径，不能只依据窗口关闭代码推断。
+
+## 当前验证记录
+
+- TDD：新建扩展名、关闭最后编辑标签、外部变化决策与自写事件内容核对均经历失败测试后修复，当前相关测试已通过。
+- 真实 UI：`+`/`Cmd+N` 新建并进入编辑、取消不建文件、700ms 自动保存、`Cmd+W`、红色窗口关闭与 `Cmd+Q` 写盘均通过。
+- 失败恢复：只读文件显示 `Permission denied`，阻止关闭并保留内容；恢复权限后 `Cmd+S` 写盘通过。
+- 更新检查：`verify-sparkle-update.sh` 通过；线上最新桌面版为 `v1.2.0`，平台资产与 `appcast.xml` 完整；应用菜单显示 `MD Preview Is Up to Date / 1.2.0`。
+- 完整验证：`scripts/verify.sh` 通过，包含 33 个 Rust 测试、桌面搜索/锚点、Sparkle、Windows updater、iOS build、Android debug/release、移动渲染与 release readiness。
+- PR 与 CI：PR #36 已合并；Linux、macOS、Windows 三个平台构建全部通过。
+- 正式发布：`v1.3.0` Release 已公开，四个平台资产齐全；DMG 与内部 app 完成 Developer ID 签名、两次 Apple 公证和 staple，Gatekeeper 为 `Notarized Developer ID`。
+- 更新闭环：线上 `appcast.xml` 指向 `1.3.0` 且包含 EdDSA 签名；保留的 `1.2.0` QA 包显示 `Update: v1.3.0`，手动检查弹出 `Update Available`。
+- 产品入口：官网、README、About、CHANGELOG 与结构化版本均已更新到 `1.3.0`；线上官网已返回 `New in v1.3` 与 `Reliable autosave`。
+- Issues：open issues #33（相对文档链接）、#29（页面缩放）、#19（Homebrew Cask）已有清晰范围或既有回复，不属于本次发布阻塞，无需重复回复。
 
 ---
 
-# 上一任务存档：iOS signing / TestFlight 发布准备
+# 已完成任务：v1.2.0 官网、README、About 与社区补发
 
-## 目标
+## 补发目标
 
-- 尽量完成 MD Preview iOS 版本发布前的本机准备工作。
-- 将 iOS 版本号对齐到当前 mobile release 线。
-- 验证 iOS 构建、归档、模拟器安装启动和移动端渲染。
-- 配好 iOS signing team、App Store Connect API key、本机开发签名、真机安装和分发 IPA。
-- 创建 App Store Connect app record、TestFlight 内部测试组，并上传首个 TestFlight build。
-- 补齐 App Store metadata、截图、隐私、内容权利、分类、价格和销售范围。
+- 官网和中英文 README 直接表达 v1.2.0 解决的三个核心痛点：多文档标签、会话恢复、Finder 新建后直接编辑。
+- 官网使用真实 v1.2.0 多标签截图，更新 SEO、Open Graph 与结构化版本信息。
+- GitHub About 和应用 About 源码使用一致、克制的产品定位；本次不重新打包二进制。
+- 回复 GitHub Issue #28 并按已完成关闭；回复 #33，明确相对 Markdown 链接仍未实现并保持开放。
 
-## 非目标
+## 补发非目标
 
-- 不使用 experimental `asc web` 私有接口自动创建 App Store Connect app record，除非用户显式确认。
-- 不直接提交 App Store 审核；正式提交仍需要 App Review 真实联系人并单独确认。
-- 不修改 Android 发布配置。
+- 不改变 v1.2.0 功能实现，不新增相对链接、文件夹树或缩放功能。
+- 不重新签名、公证或发布安装包。
+- 不提交 App Store Review、推广资料及其他既有未提交改动。
 
-## 验收场景
+## 补发验收
 
-- [x] iOS `MARKETING_VERSION` 对齐到 `1.0.7`，`CURRENT_PROJECT_VERSION` 对齐到 `8`。
-- [x] iOS project generation 成功。
-- [x] iOS simulator build 成功，并可安装启动到 iPhone 17 Pro Simulator。
-- [x] 首屏截图确认 app 启动到空状态，没有崩溃或明显遮挡。
-- [x] iOS generic Release archive 在 `CODE_SIGNING_ALLOWED=NO` 下成功，证明代码和 archive 路径可用。
-- [x] mobile renderer golden 验证通过。
-- [x] mobile release readiness 通过。
-- [x] App Store Connect API key 存入系统钥匙串并通过网络校验。
-- [x] `app.mdpreview.mobile` 显式 bundle id 创建成功。
-- [x] Xcode automatic signing 配置 Team `BUR55497B4`，真机构建、安装、启动成功。
-- [x] App Store Connect 分发 IPA 导出成功，签名为 `Apple Distribution`。
-- [x] App Store Connect app record 创建成功，app id 为 `6779451523`。
-- [x] TestFlight 内部测试组创建成功，group id 为 `061ed3ee-dd2a-4449-87f8-3967c065ba1e`。
-- [x] TestFlight build `1.0.7 (8)` 上传成功并处理为 `VALID`。
-- [x] App Store version `1.0.7` 绑定 build `eadcd636-878e-40a4-95ee-f9ce93b86133`。
-- [x] App Store metadata、隐私政策 URL、支持 URL、分类、内容权利、年龄分级、免费价格和 175 个国家/地区销售范围已配置。
-- [x] iPhone 6.5-inch 与 iPad Pro 12.9-inch 截图各 3 张已重新生成并上传，重点展示 Mermaid diagrams、KaTeX notes、搜索和 README 渲染，均返回 `COMPLETE`。
-- [x] App Privacy 已发布为“未收集数据”。
-- [x] App Review 联系人信息已配置，版本已提交审核，状态为 `WAITING_FOR_REVIEW`。
+- [x] 官网首屏、功能区、安装说明及元数据均包含 v1.2.0 新能力，桌面和移动视口无溢出或遮挡。
+- [x] README.md 与 README_zh.md 同步描述多标签、恢复、缺失文件、Finder 操作和快捷键。
+- [x] 应用 About 源码包含新定位与 What's New 入口；Rust 测试和完整验证通过。
+- [x] GitHub About 更新；官网线上内容与提交一致。
+- [x] #28 有发布说明并关闭；#33 有明确状态回复并保持开放。
 
-## 执行记录
+## 补发验证记录
 
-- [x] `mobile/ios/project.yml` 版本从 `1.0.6` build `7` 更新为 `1.0.7` build `8`。
-- [x] `mobile/ios/project.yml` 配置 `DEVELOPMENT_TEAM: BUR55497B4` 和 `CODE_SIGN_STYLE: Automatic`。
-- [x] 通过 `xcodegen generate` 重新生成本地 Xcode project。
-- [x] 构建并安装到 iPhone 17 Pro Simulator，启动 bundle id `app.mdpreview.mobile`。
-- [x] 截图保存到 `target/ios-qa/ios-simulator-launch.png`。
-- [x] 生成无签名 Release archive：`mobile/ios/build/MDPreviewMobile.xcarchive`。
-- [x] 使用用户提供的新 ASC API key 登录 `asc`，凭据存储在系统钥匙串。
-- [x] 创建 bundle id：`6P439S39PG` / `app.mdpreview.mobile` / Team `BUR55497B4`。
-- [x] Xcode 自动创建 Apple Development 证书和开发 profile，真机安装到连接的 iPhone。
-- [x] 导出 App Store Connect IPA：`mobile/ios/build/export/MD Preview.ipa`。
-- [x] 通过 App Store Connect 网页创建 app record：`Local Markdown Preview` / `app.mdpreview.mobile` / SKU `md-preview-ios`。
-- [x] 创建 TestFlight 内部测试组：`Internal Testers`。
-- [x] 上传 `mobile/ios/build/export/MD Preview.ipa` 到 TestFlight，并挂到 `Internal Testers`。
-- [x] 新增公开页面：`docs/privacy.html` 和 `docs/support.html`。
-- [x] 配置 App Store version：`1.0.7`、版权、关联 build、description、keywords、promotional text、support URL、marketing URL。
-- [x] 配置 app-level 信息：名称 `Local Markdown Preview`、subtitle `Open Markdown files locally`、privacy policy URL、内容权利 `DOES_NOT_USE_THIRD_PARTY_CONTENT`。
-- [x] 配置分类：primary `PRODUCTIVITY`、secondary `DEVELOPER_TOOLS`。
-- [x] 配置年龄分级为 safe defaults：不含广告、赌博、聊天、用户生成内容、不受限网页访问等。
-- [x] 配置免费价格，并通过网页初始化所有 175 个国家/地区发布时供应。
-- [x] 新增 `scripts/generate-app-store-screenshots.mjs`，使用真实 `mobile/shared/preview.html`、设备 CSS viewport + DPR、真实 Mermaid/KaTeX DOM 生成 App Store 截图。
-- [x] 重新生成并上传 App Store 截图到 localization `dde3155e-18ac-46b5-a814-d3db22746d35`，替换旧截图。
-- [x] App Privacy 网页问卷选择“不收集数据”，并发布隐私答复。
-- [x] App Review 登录信息改为“不需要登录”，并补充 reviewer notes。
-- [x] App Review 联系人信息已按用户提供内容写入 App Store Connect，不在仓库记录明文。
-- [x] 提交 App Store 审核，submission id `5f1e7fbe-9f52-46c1-bd7b-011d38395301`。
-- [x] App Store version copyright 已从公司名改为 `2026 Vorojar`，审核状态保持 `WAITING_FOR_REVIEW`。
-
-## 验证记录
-
-```text
-命令：xcrun devicectl list devices && xcrun xctrace list devices
-结果：未通过真机可用性。电脑能看到多台 iPhone，但 Xcode/CoreDevice 标记为 `unavailable` / `Devices Offline`。
-
-命令：security find-identity -v -p codesigning
-结果：未找到 iOS Apple Development / Apple Distribution 证书；当前只有 macOS Developer ID Application。
-
-命令：asc auth status
-结果：通过。新 ASC API key 已存入 System Keychain，并设为默认 ASC profile。
-
-命令：asc bundle-ids create --identifier app.mdpreview.mobile --name "MD Preview Mobile" --platform IOS
-结果：通过。创建 bundle id `6P439S39PG`，identifier `app.mdpreview.mobile`，seed/team `BUR55497B4`。
-
-命令：cd mobile/ios && xcodegen generate && xcodebuild -project MDPreviewMobile.xcodeproj -scheme MDPreviewMobile -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.5' CODE_SIGNING_ALLOWED=NO build
-结果：通过。
-
-命令：xcrun simctl install 2D8BDB83-D40C-4E0A-85FF-219A7427ECA4 <MDPreviewMobile.app> && xcrun simctl launch 2D8BDB83-D40C-4E0A-85FF-219A7427ECA4 app.mdpreview.mobile
-结果：通过。模拟器安装成功，启动进程 pid 97643。
-
-命令：xcrun simctl io 2D8BDB83-D40C-4E0A-85FF-219A7427ECA4 screenshot target/ios-qa/ios-simulator-launch.png
-结果：通过。截图显示 MD Preview 空状态首屏。
-
-命令：NODE_PATH=/Users/longjiewu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules /Users/longjiewu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node mobile/scripts/verify-mobile-renderer.mjs
-结果：通过。
-
-命令：mobile/scripts/verify-release-readiness.sh
-结果：通过。
-
-命令：cd mobile/ios && xcodebuild clean archive -project MDPreviewMobile.xcodeproj -scheme MDPreviewMobile -configuration Release -destination 'generic/platform=iOS' -archivePath "$PWD/build/MDPreviewMobile.xcarchive" CODE_SIGNING_ALLOWED=NO
-结果：通过。无签名 archive 生成成功；archive Info.plist 确认为 version `1.0.7` build `8`。
-
-命令：cd mobile/ios && xcodebuild -project MDPreviewMobile.xcodeproj -scheme MDPreviewMobile -destination 'id=<CONNECTED_IPHONE_UDID>' -allowProvisioningUpdates -allowProvisioningDeviceRegistration -authenticationKeyPath <ASC_KEY_PATH> -authenticationKeyID <ASC_KEY_ID> -authenticationKeyIssuerID <ASC_ISSUER_ID> build
-结果：通过。真机构建成功，签名身份为 Apple Development API-created certificate，provisioning profile 为 `iOS Team Provisioning Profile: *`。
-
-命令：xcrun devicectl device install app --device <CONNECTED_IPHONE_UDID> <MDPreviewMobile.app> && xcrun devicectl device process launch --device <CONNECTED_IPHONE_UDID> app.mdpreview.mobile
-结果：通过。真机安装并启动成功。
-
-命令：xcodebuild clean archive ... && xcodebuild -exportArchive ... -exportOptionsPlist target/ios-qa/ExportOptions-app-store-connect.plist
-结果：通过。导出 `mobile/ios/build/export/MD Preview.ipa`。IPA 内 app 签名为 `Apple Distribution: Ningbo Huli Huli Network Technology Co., Ltd. (BUR55497B4)`，profile 为 `iOS Team Store Provisioning Profile: app.mdpreview.mobile`。
-
-命令：./scripts/verify.sh
-结果：通过。覆盖 release signing contract、cargo test、anchor navigation、Sparkle update、Windows self-update、iOS xcodegen/build/parse、Android debug/release、mobile renderer、release readiness。
-
-命令：asc apps list --bundle-id app.mdpreview.mobile --output json
-结果：通过。返回 app id `6779451523`，名称 `Local Markdown Preview`，SKU `md-preview-ios`，primary locale `en-US`。
-
-命令：asc testflight groups list --app 6779451523 --output json
-结果：通过。返回内部测试组 `Internal Testers`，group id `061ed3ee-dd2a-4449-87f8-3967c065ba1e`。
-
-命令：asc publish testflight --app 6779451523 --ipa "mobile/ios/build/export/MD Preview.ipa" --group "061ed3ee-dd2a-4449-87f8-3967c065ba1e" --test-notes "Initial iOS TestFlight build for Markdown preview file-open validation." --locale en-US --wait --timeout 30m --output json
-结果：通过。上传 build id `eadcd636-878e-40a4-95ee-f9ce93b86133`，版本 `1.0.7` build `8`，processingState `VALID`，已关联内部测试组。
-
-命令：asc builds latest --app 6779451523 --version 1.0.7 --platform IOS --output json
-结果：通过。最新 build id `eadcd636-878e-40a4-95ee-f9ce93b86133`，processingState `VALID`，usesNonExemptEncryption `false`。
-
-命令：asc versions update --version-id e1e365a2-150c-4348-9226-7f5c13ed8b66 --version 1.0.7 --copyright "2026 Ningbo Huli Huli Network Technology Co., Ltd." --release-type AFTER_APPROVAL
-结果：通过。App Store version 更新为 `1.0.7`。
-
-命令：asc versions attach-build --version-id e1e365a2-150c-4348-9226-7f5c13ed8b66 --build eadcd636-878e-40a4-95ee-f9ce93b86133
-结果：通过。App Store version 已绑定 TestFlight build。
-
-命令：asc apps info edit --app 6779451523 --version 1.0.7 --platform IOS --locale en-US ...
-结果：通过。写入 description、keywords、promotional text、support URL 和 marketing URL。首发版本的 `whatsNew` 被 Apple 拒绝编辑，保留为空。
-
-命令：asc app-setup info set --app 6779451523 ... && asc categories set ... && asc age-rating edit --app 6779451523 --all-none
-结果：通过。写入 app-level metadata、内容权利、分类和年龄分级。
-
-命令：asc app-setup pricing set --app 6779451523 --free --start-date 2026-06-11
-结果：通过。免费价格生效。
-
-命令：asc screenshots validate --path target/app-store-screenshots/iphone --device-type APP_IPHONE_65 && asc screenshots validate --path target/app-store-screenshots/ipad --device-type APP_IPAD_PRO_3GEN_129
-结果：通过。iPhone 三张 `1284x2778`，iPad 三张 `2048x2732`，均符合 ASC 尺寸要求。
-
-命令：asc screenshots upload --version-localization dde3155e-18ac-46b5-a814-d3db22746d35 --path target/app-store-screenshots/{iphone,ipad} ...
-结果：通过。iPhone set `22e09205-308d-41f8-8cb9-c87030f39ef9`、iPad set `e380c0b0-559d-4135-89e3-e9ae9600ed14`，6 张截图状态均为 `COMPLETE`。
-
-命令：NODE_PATH="$TMP_PLAYWRIGHT_DIR/node_modules" node scripts/generate-app-store-screenshots.mjs
-结果：通过。重新生成 iPhone `1284x2778` 与 iPad `2048x2732` 截图各 3 张：`01-mermaid-katex-notes.png`、`02-search-in-document.png`、`03-readme-rendering.png`。生成时强制等待 Mermaid SVG、KaTeX、搜索高亮、alert/highlight/table/code DOM 出现。
-
-命令：asc screenshots validate --path target/app-store-screenshots/iphone --device-type APP_IPHONE_65 && asc screenshots validate --path target/app-store-screenshots/ipad --device-type APP_IPAD_PRO_3GEN_129
-结果：通过。6 张新截图均符合 Apple 尺寸要求。
-
-命令：asc screenshots upload --version-localization dde3155e-18ac-46b5-a814-d3db22746d35 --path target/app-store-screenshots/{iphone,ipad} --replace
-结果：通过。旧截图被替换；ASC 当前列表只保留 `01-mermaid-katex-notes.png`、`02-search-in-document.png`、`03-readme-rendering.png`，iPhone/iPad 共 6 张均为 `COMPLETE`。
-
-命令：App Store Connect 网页 / Pricing and Availability
-结果：通过。初始化所有 175 个国家/地区发布时供应。
-
-命令：App Store Connect 网页 / App Privacy
-结果：通过。隐私政策 URL 已显示；问卷选择“不收集数据”；隐私答复已发布，页面显示“未收集数据”。
-
-命令：asc validate --app 6779451523 --version-id e1e365a2-150c-4348-9226-7f5c13ed8b66 --platform IOS --output json
-结果：未完全通过。剩余 4 个 blocking errors 均为 App Review 联系人缺失：`contactFirstName`、`contactLastName`、`contactEmail`、`contactPhone`。另外 `whatsNew` 是首发版本不可编辑警告，App Privacy 是公共 API 无法验证的 info，但网页已确认发布。
-
-命令：asc review details-update --id 0c166707-b198-4800-afb4-800c90fd9e8b ...
-结果：通过。App Review 联系人字段和 reviewer notes 已配置；联系人明文不写入仓库。
-
-命令：asc validate --app 6779451523 --version-id e1e365a2-150c-4348-9226-7f5c13ed8b66 --platform IOS --output json
-结果：通过提交前检查。`errors: 0`、`blocking: 0`；仅剩首发 `whatsNew` 空的 warning，以及 App Privacy 公共 API 不可验证的 info。
-
-命令：asc review doctor --app 6779451523 --version-id e1e365a2-150c-4348-9226-7f5c13ed8b66 --platform IOS --output json
-结果：通过。无 submission blockers，next action 为提交版本。
-
-命令：asc review submit --app 6779451523 --version-id e1e365a2-150c-4348-9226-7f5c13ed8b66 --build eadcd636-878e-40a4-95ee-f9ce93b86133 --platform IOS --confirm --output json
-结果：通过。submission id `5f1e7fbe-9f52-46c1-bd7b-011d38395301`，submittedDate `2026-06-12T02:30:49.757Z`。
-
-命令：asc review status --app 6779451523 --version-id e1e365a2-150c-4348-9226-7f5c13ed8b66 --platform IOS --output json
-结果：通过。版本状态 `WAITING_FOR_REVIEW`，next action 为等待 App Store review outcome。
-
-命令：asc versions update --version-id e1e365a2-150c-4348-9226-7f5c13ed8b66 --copyright "2026 Vorojar"
-结果：通过。Apple 接受更新，版本状态仍为 `WAITING_FOR_REVIEW`。
-
-命令：asc versions list --app 6779451523 --platform IOS --version 1.0.7 --output json
-结果：通过。确认 `copyright` 为 `2026 Vorojar`，`appStoreState` 为 `WAITING_FOR_REVIEW`。
-```
-
-## 风险和假设
-
-- App Store Connect app record 已创建，但 `MD Preview`、`Markdown Preview` 和 `Markdown Previewer` 均被 Apple 判定名称占用；当前公开名称使用 `Local Markdown Preview`。
-- TestFlight build 已上传并处理为 `VALID`；App Store metadata、截图、隐私、价格和销售范围已补齐。
-- 第一版截图的根因是把 App Store 目标像素尺寸当作浏览器 CSS viewport 截图，导致 iPad 画布比例失真、内容像窄屏手机稿；已改为真实设备 CSS viewport + DPR，并保留脚本防止回退。
-- App Store 审核已提交，当前等待 Apple Review 结果。
-- 真机已能安装启动 app，但 Open In / 分享面板真实文件流仍建议用户在手机上用 Files、微信、企业微信各测一次。
+- 官网 HTML、JSON-LD 与中英文属性解析通过；结构化版本为 `1.2.0`，新版主图为真实多标签界面。
+- 真实浏览器验收：桌面 1280×720 与移动 390×844 均无横向溢出；中英文切换、首屏、功能区和安装说明正确。
+- 移动验收发现语言切换点击区不足 44px，已修复为最小 44×44px；主要下载按钮最小高度约 52px。
+- 应用 About 真实运行：新版定位完整显示，Home、GitHub、What's New 三个入口存在，无文字裁切。
+- `cargo fmt --check`、`cargo check`、`cargo test`（28/28）及 `./scripts/verify.sh` 全部通过。
+- GitHub About 已更新为多标签、会话恢复、macOS Finder 工作流与本地优先定位。
+- Issue #28 已回复并按 completed 关闭；#33 已回复并保持开放。
+- PR #34 在 macOS、Linux、Windows CI 全绿后合并；GitHub Pages 构建提交为 `5f2b9dd`。
+- 线上 `index.html` 与 `hero.jpg` 分别和仓库文件哈希完全一致；线上桌面与移动视口复验通过。
+- 官网主图进一步换成真实发布版渲染：同屏展示 3 个标签、GitHub Alert、Mermaid、KaTeX 与 Rust 代码高亮；拒绝使用会重绘产品像素的生成式图片作为事实截图。
 
 ---
 
-# 上一任务存档：发布签名链路修复
+# 已完成任务：桌面多标签、Finder 新建闭环与 v1.2.0 发布
 
 ## 目标
 
-- 让 MD Preview 发布脚本默认使用 remote-mac-sign 的本地优先入口，而不是直接调用远程签名机。
-- 对 Apple notary 的瞬态失败增加一次自动重试，减少手动恢复发布的概率。
-- 把签名入口约束加入统一验证，避免以后回退成远程优先。
+- 桌面端使用顶部标签同时打开多份 Markdown / Text 文档；重复打开同一路径时激活已有标签。
+- 持久化标签顺序和活动标签；重启只加载活动文档内容，其他标签在点击时从磁盘懒加载。
+- 文件被移动或删除时保留标签并显示明确的缺失状态，支持重新定位或关闭标签。
+- 每个标签独立管理 dirty 状态；切换、关闭和外部修改不得串到其他文档。
+- macOS 将 Finder Sync 右键工具嵌入 `MD Preview.app`；新建 Markdown 后直接在新标签进入源码编辑。
+- 完成自动化、真实 UI、安装包、签名、公证、Gatekeeper 和 GitHub Release 验收后发布 `v1.2.0`。
 
 ## 非目标
 
-- 不重新发布 `v1.1.19`。
-- 不修改全局 remote-mac-sign skill，不影响其他项目的签名行为。
-- 不改变 GitHub Release、Sparkle appcast 或 Homebrew Cask 的发布格式。
+- 本次不把多标签扩展到 iOS / Android；移动端继续保持单文档快速预览。
+- 不增加左侧文件树、项目管理、富文本编辑或云同步。
+- Finder 右键中的 Text / JSON / HTML 创建动作保持现有行为；只有 Markdown 直达 MD Preview 编辑闭环。
+- 不修改或提交当前工作区已有的 App Store Review 文档、推广资料及其他无关改动。
 
 ## 验收场景
 
-- [x] 默认签名脚本为 `$HOME/.claude/skills/remote-mac-sign/sign.sh`，由 skill 决定本地可用时本地签、本地不可用时兜底远程。
-- [x] 可以用 `MD_PREVIEW_SIGN_SCRIPT` 覆盖签名入口，用 `MD_PREVIEW_SIGN_ATTEMPTS` 控制重试次数。
-- [x] `MD_PREVIEW_SIGN_ATTEMPTS=0 ./release-sign.sh v1.1.19` 在联网/下载 Release 前失败，提示必须是正整数。
-- [x] `scripts/verify.sh` 会检查 `release-sign.sh` 不再硬编码 `sign_remote.sh`。
+- [x] 打开、拖入或由 Finder 传入多份支持文件时创建顶部标签；一次拖入多份文件全部加入，同一路径不重复。
+- [x] 标签切换显示对应内容和窗口标题；关闭当前标签后选择相邻标签，关闭最后一个标签回到空状态。
+- [x] `Cmd/Ctrl+W` 关闭当前标签；没有标签时才关闭窗口。
+- [x] 退出后重启恢复标签顺序和活动标签；会话文件只记录路径/顺序/活动项，不缓存未修改文档正文。
+- [x] 启动时缺失文件不会被静默删除或连续弹窗；标签显示警告，点击后可重新定位或关闭。
+- [x] 活动文件运行中被删除时显示缺失状态；后台标签点击时读取磁盘最新内容。
+- [x] 编辑 dirty 状态按标签隔离；切换标签会保存当前编辑，保存失败时保留当前标签和未保存内容并提示。
+- [x] Finder 右键“新建文件 > Markdown (.md)”创建不冲突文件名，启动/唤醒 MD Preview，在新标签进入编辑并聚焦。
+- [x] Finder 扩展打入 app bundle，使用稳定 bundle id，可被 `pluginkit` 枚举；主应用正常预览不依赖扩展启用。
+- [x] `cargo test`、`cargo check`、`./scripts/verify.sh` 和 macOS universal Release 构建全部通过。
+- [x] 真实 macOS UI 验证顶部标签、溢出、暗色/亮色、缺失状态、编辑切换与窗口关键尺寸，无文字遮挡。
+- [x] 最终 DMG 与内部 app/appex 通过签名、公证、staple、`spctl`；GitHub Release 含三平台资产、appcast 和来自本版本 CHANGELOG 的完整说明。
+
+## 最小验证命令
+
+```bash
+cargo test
+cargo check
+./scripts/verify.sh
+./bundle.sh
+codesign --verify --deep --strict --verbose=2 "target/MD Preview.app"
+pluginkit -m -A -p com.apple.FinderSync | grep MDPreviewFinder
+```
+
+## 风险与假设
+
+- Finder Sync 扩展首次启用受 macOS 用户授权控制；应用可以注册、检测和引导，但不能绕过系统策略静默替用户授权。
+- 当前代码是单文件、单 watcher、单 dirty 状态；必须先建立文档会话模型，不能只增加视觉标签。
+- 发布从本次提交的干净副本执行，以保留当前工作区已有未提交内容。
 
 ## 执行记录
 
-- [x] `release-sign.sh` 默认签名入口从 `sign_remote.sh` 改为本地优先的 `sign.sh`。
-- [x] `release-sign.sh` 增加签名重试循环，默认最多尝试 2 次，每次重试前清理本次工作目录里的旧 `signed-output`。
-- [x] `scripts/release.sh --help` 补充签名脚本和签名重试环境变量。
-- [x] `scripts/verify.sh` 增加 release signing contract 检查和 shell 语法检查。
+- [x] 已确认最新正式版为 `v1.1.25`，本次使用语义化次版本 `v1.2.0`。
+- [x] 已检查现有单文件状态、最近文件持久化、文件 watcher、内置源码编辑和 macOS 发布链路。
+- [x] 已读取本地优先签名、公证和 GitHub 发布流程。
+- [x] 已实现会话模型、顶部标签、懒加载、缺失文件状态、逐标签 dirty 与切换/关闭前保存。
+- [x] 已将 Finder Sync 扩展打入 `MD Preview.app`，并完成 Finder 右键创建 Markdown → 新标签源码编辑 → 保存的真实闭环。
+- [x] 暗色视觉验收发现 Markdown Alert 对比度回归，已修复 CSS 层叠顺序并加入回归断言。
 
 ## 验证记录
 
-```text
-命令：bash -n release-sign.sh scripts/release.sh scripts/verify.sh
-结果：通过。
-
-命令：MD_PREVIEW_SIGN_ATTEMPTS=0 ./release-sign.sh v1.1.19
-结果：通过。脚本在联网/下载 Release 前以 exit 2 失败，并提示 `MD_PREVIEW_SIGN_ATTEMPTS must be a positive integer`。
-
-命令：./scripts/verify.sh
-结果：通过。覆盖 release signing contract、cargo test、anchor navigation、Sparkle update、Windows self-update、iOS xcodegen/build/parse、Android debug/release、mobile renderer、release readiness。
-```
-
-## 风险和假设
-
-- 本次不触发真实发布和真实签名；真实 Apple notary 仍可能卡在 Apple 服务侧，但发布脚本会自动重试一次，并且默认会优先走本机签名。
-- `sign.sh` 的本地可用性判断仍由 remote-mac-sign skill 负责：本机证书或 notary profile 缺失时会按 skill 设计自动兜底远程。
-
----
-
-# 上一任务存档：v1.1.19 issues/release
-
-## 目标
-
-- 解决 GitHub issues #3、#20、#23，并完成 #19 的 Homebrew Cask 发布路径。
-- 发布新的桌面版本 `v1.1.19`，推送到 GitHub，并验证 Release assets。
-- 在验证通过后同步 issue 状态，避免已完成事项继续悬挂。
-
-## 非目标
-
-- 不重做 Markdown 引擎，不引入新的大型渲染依赖。
-- 不调整主题选择器、CLI `--edit` / `--print` 等其他 open issues。
-- 不改变移动端 App Store / Google Play 分发策略。
-
-## 验收场景
-
-- [x] `> [!IMPORTANT]` 渲染为 `markdown-alert-important`，并且 `[!IMPORTANT]` 标记本身不显示在正文里。
-- [x] `==高亮 & tag==` 渲染为 `<mark class="mdp-mark">`，内部文本仍然安全转义。
-- [x] inline code / fenced code 中的 `==literal==` 不会被误转成高亮。
-- [x] Linux + NVIDIA 且用户没有手动设置 WebKit workaround 时，启动前自动设置 `WEBKIT_DISABLE_DMABUF_RENDERER=1`。
-- [x] 用户已显式设置 `WEBKIT_DISABLE_DMABUF_RENDERER` 或 `WEBKIT_DISABLE_COMPOSITING_MODE` 时，程序不覆盖用户选择。
-- [x] 移动端共享预览层同样支持 GitHub Alerts 和 `==highlight==`。
-- [x] README / README_zh 记录新 Markdown 支持和 Linux NVIDIA 空白窗口 workaround。
-- [x] 新版 `v1.1.19` GitHub Release 包含 macOS DMG、Windows EXE、Linux tarball、`appcast.xml`。
-- [x] Homebrew Cask 使用新版 macOS DMG 的真实 sha256，并通过 `brew audit --cask`，PR 已提交到 Homebrew/homebrew-cask。
-
-## 执行记录
-
-- [x] 桌面 Markdown 解析启用 `Options::ENABLE_GFM`，使用 `pulldown-cmark` 原生 GitHub Alert 支持。
-- [x] 桌面 Markdown event 层增加 `==highlight==` 到 `<mark class="mdp-mark">` 的转换。
-- [x] 桌面和移动端补充 GitHub Alert / mark CSS。
-- [x] Linux 启动阶段增加 NVIDIA/WebKitGTK DMABUF fallback。
-- [x] 移动端共享增强脚本增加 GitHub Alert 和 mark DOM 增强。
-- [x] 移动端 Playwright renderer fixture 覆盖 alert、mark、code literal。
-- [x] 版本号更新到 `1.1.19`，CHANGELOG / README / README_zh 更新。
-- [x] `v1.1.19` tag、GitHub Release、签名 DMG、Sparkle appcast 完成。
-- [x] Homebrew Cask PR 创建：https://github.com/Homebrew/homebrew-cask/pull/269252
-
-## 验证记录
-
-```text
-命令：cargo test -- --nocapture
-结果：通过。17 个 Rust 单测全部通过，覆盖 GitHub Alerts、mark 渲染、code 不误伤、Linux NVIDIA fallback、既有锚点/搜索/更新逻辑。
-
-命令：NODE_PATH=/Users/longjiewu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules /Users/longjiewu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node mobile/scripts/verify-mobile-renderer.mjs
-结果：通过。移动端 fixture 渲染 KaTeX、Mermaid、GitHub Alert、mark、搜索、打印样式和 javascript: 链接拦截。
-
-命令：./scripts/verify.sh
-结果：通过。guard、cargo test、anchor navigation、Sparkle update、Windows self-update、iOS xcodegen/build/parse、Android debug/release、mobile renderer、release readiness 全部通过。
-
-命令：cargo build --release
-结果：通过。确认非 Linux release build 不再出现 `linux_webkit_compat_env` dead_code warning。
-
-命令：scripts/release.sh v1.1.19
-结果：GitHub Actions 三平台 release build 和 GitHub Release 创建通过；第一次远程签名阶段 Apple notary `NSURLErrorDomain Code=-1001` 超时。
-
-命令：本地优先 remote-mac-sign 恢复签名并上传
-结果：第一次本地 app.zip submission `94eb27f7-ac99-48fc-9c49-fc5ca17b04ec` 长时间停留 `In Progress`；清理临时挂载后第二次本地签名成功，inner app submission `391e4f1a-ae09-4484-90df-0b7b1a34882a` Accepted，DMG submission `7f990dd7-c963-402d-9b17-56ce7f42fd08` Accepted，DMG 和内层 app 均完成 staple。
-
-命令：gh release view v1.1.19 -R vorojar/md-preview --json assets
-结果：通过。Release asset 为 `appcast.xml`、`MD-Preview-linux-x64.tar.gz`、`MD-Preview-macOS-universal.dmg`、`MD-Preview-windows-x64.exe`。
-
-命令：xcrun stapler validate target/MD-Preview-macOS-universal.dmg
-结果：通过。The validate action worked。
-
-命令：codesign --verify --deep --strict --verbose=2 target/MD\ Preview.app
-结果：通过。app valid on disk，satisfies Designated Requirement。
-
-命令：spctl -a -t open --context context:primary-signature target/MD-Preview-macOS-universal.dmg
-结果：通过。
-
-命令：curl -fsSL https://github.com/vorojar/md-preview/releases/download/v1.1.19/appcast.xml
-结果：通过。appcast 指向 `v1.1.19/MD-Preview-macOS-universal.dmg`，并包含 `sparkle:edSignature`。
-
-命令：brew audit --cask --new md-preview
-结果：通过。
-
-命令：brew style --cask md-preview
-结果：通过。1 file inspected, no offenses detected。
-
-命令：brew livecheck --cask md-preview --json
-结果：通过。current/latest 均为 `1.1.19`。
-
-命令：brew install --cask --appdir=$(mktemp -d) ./Casks/m/md-preview.rb && brew uninstall --cask md-preview
-结果：通过。`MD Preview.app` 安装到临时 appdir，`/opt/homebrew/bin/md-preview` 正常 link/unlink。
-```
-
-## 风险和假设
-
-- 本机不是 Linux/NVIDIA 环境，#3 的自动 fallback 通过确定性单元测试和文档验证；真实 GPU/WebKitGTK 渲染仍需用户环境回归。
-- Homebrew Cask 已提交 PR，最终是否 merge 取决于 Homebrew 维护者审核。
-- Apple notary 第一次远程提交和第一次本地 app.zip 等待都出现服务侧超时/长时间 In Progress；最终通过第二次本地提交完成签名、公证和 staple。
+- `cargo check`：通过。
+- `cargo test`：28/28 通过；覆盖路径去重、相邻标签关闭、会话恢复/缺失文件、Finder URL 与不冲突文件名。
+- `./scripts/verify.sh`：通过；桌面搜索、锚点、Sparkle、Windows 更新、iOS build、Android debug/release 与移动渲染均通过。
+- `./bundle.sh`：通过；macOS 主程序与 Finder extension 均为 `x86_64 arm64`，extension 版本 `1.2.0`。
+- `codesign --verify --deep --strict`：通过；extension 保留 `com.apple.security.app-sandbox=true`。
+- 隔离会话真实验收：重启后 3 个标签顺序不变、活动索引为 1，`session.json` 只保存路径与活动项，无正文。
+- 真实编辑验收：标签显示 dirty，切换后写盘成功并激活目标文档；窗口标题与内容一致。
+- 真实缺失验收：删除后台文件后点击标签，标签保留并显示“重新定位/关闭标签”。
+- 真实视觉验收：亮色、暗色、约 560px 紧凑窗口、7 个含长文件名标签溢出均无重叠；暗色 Alert 修复后复验通过。
+- Finder 系统验收：`pluginkit` 显示 `+ com.mdpreview.app.FinderExtension(1.2.0)`；Finder 空白处右键显示完整菜单；创建 `新建.md` 后应用进入聚焦源码编辑，`Cmd+S` 写盘内容核对通过。
+- 干净副本正式发布：GitHub Actions `29553519458` 的 Linux、Windows、macOS 构建与 Release 发布全部成功。
+- Apple 公证：内部 app submission `4af9070d-c93f-481c-ac5c-ce373caa52cd`、外层 DMG submission `9ddb3b73-225f-4df1-824e-35a9b4d9f20d` 均为 `Accepted`，两者 staple 成功。
+- 最终产物验收：已安装 `/Applications/MD Preview.app` 为 `1.2.0`，主程序与 Finder extension 均为 `x86_64 arm64`；`codesign --verify --deep --strict`、DMG `stapler validate` 与 app/DMG `spctl` 全部通过，来源为 `Notarized Developer ID`。
+- 已安装公证版真实运行：隔离会话启动两份文档，顶部标签、活动文档、正文与窗口标题正确，应用正常退出。
+- Finder 扩展最终状态：`+ com.mdpreview.app.FinderExtension(1.2.0)`；旧独立扩展仅禁用保留，避免重复菜单。
+- GitHub Release `v1.2.0` 已发布，包含 Linux、Windows、macOS DMG 与 `appcast.xml`；Release 正文与 `CHANGELOG.md` 的六条版本说明一致。

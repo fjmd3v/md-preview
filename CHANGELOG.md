@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.3.0
+
+- Changed the tab-bar `+` and `Cmd/Ctrl+N` into a dedicated New Markdown flow that creates a `.md` file in the current document folder and opens it directly in source edit.
+- Added 700 ms debounced autosave in source edit mode, so quick edits persist without switching back to preview or pressing Save.
+- Forced pending edits to save before preview, tab activation, tab close, window close, and app quit, including protection against stale autosave acknowledgements.
+- Kept tabs open and editor contents intact when saving fails, with a visible error that explains the affected path.
+- Protected dirty editor contents from external file-change reloads and stopped time-only watcher suppression from hiding real external writes.
+- Verified the native macOS update menu, Sparkle configuration, signed appcast contract, and live GitHub desktop release selection.
+
+## 1.2.0
+
+- Added a native desktop tab bar for opening multiple Markdown and text documents in one window, with per-tab dirty and missing-file states.
+- Restored tab order and the active document across launches while keeping inactive document contents lazy-loaded from disk.
+- Kept deleted or moved files visible as missing tabs with Locate and Close actions instead of silently discarding them.
+- Changed `Cmd/Ctrl+W` to close the active tab first, with save-before-switch and save-before-close protection for edited documents.
+- Integrated a Finder Sync extension into the macOS app with New Markdown, Text, JSON, and HTML actions, Copy Path, and Open in Terminal.
+- Made Finder's New Markdown action open the created file directly in MD Preview's source editor, eliminating the extra VS Code step.
+
 ## 1.1.25
 
 - Added the standard macOS `Cmd+W` / File -> Close Window command so Markdown files opened from Finder can be closed with the expected lightweight document shortcut.

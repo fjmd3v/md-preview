@@ -78,17 +78,68 @@ if "@page {{\n  margin: 12mm;\n}}" not in src:
 if "@media print {{" not in src or "#app {{ max-width: none; padding: 0; }}" not in src:
     raise SystemExit("src/main.rs must keep print media rules focused on preview output")
 PY
-  echo "[agent-verify] macOS close window shortcut"
+  echo "[agent-verify] desktop tabs and macOS close-tab shortcut"
   python3 - <<'PY'
 from pathlib import Path
 src = Path("src/main.rs").read_text()
-if '"Close Window"' not in src:
-    raise SystemExit("macOS File menu must expose Close Window")
-if "Some(sel!(performClose:))" not in src:
-    raise SystemExit("macOS Close Window must use AppKit performClose:")
+session = Path("src/session.rs").read_text()
+if 'id="tabbar"' not in src or "window.__setTabs" not in src:
+    raise SystemExit("desktop page must expose the top tab bar and deterministic tab renderer")
+if "session.json" not in src or "PersistedSession" not in session:
+    raise SystemExit("desktop tabs must persist a dedicated session separate from Recent")
+if '"Close Tab"' not in src or "mdPreviewCloseTab:" not in src:
+    raise SystemExit("macOS File menu must expose Close Tab through the tab state machine")
 if '"w",\n        NSEventModifierFlags::Command' not in src:
-    raise SystemExit("macOS Close Window must keep Cmd+W")
+    raise SystemExit("macOS Close Tab must keep Cmd+W")
+if "window.__setMissing" not in src or "data-locate-tab" not in src:
+    raise SystemExit("missing session files must keep their tab and offer relocation")
+for marker in ("new-file", "AUTOSAVE_DEBOUNCE_MS = 700", "window.__mdPreviewResolveExternalChange", "UserEvent::Quit"):
+    if marker not in src:
+        raise SystemExit(f"desktop New Markdown/autosave contract is missing: {marker}")
 PY
+  ran=1
+fi
+
+if [ -f docs/index.html ] && [ -f README.md ] && [ -f README_zh.md ]; then
+  echo "[agent-verify] v1.3 product story"
+  python3 - <<'PY'
+from pathlib import Path
+import tomllib
+
+version = tomllib.loads(Path("Cargo.toml").read_text())["package"]["version"]
+site = Path("docs/index.html").read_text()
+readme = Path("README.md").read_text()
+readme_zh = Path("README_zh.md").read_text()
+src = Path("src/main.rs").read_text()
+
+if f'"softwareVersion": "{version}"' not in site:
+    raise SystemExit("website structured data must match Cargo.toml version")
+for marker in ("Multi-document tabs", "Session restore", "Finder to source edit"):
+    if marker not in site:
+        raise SystemExit(f"website is missing v1.2 product marker: {marker}")
+for marker in ("Desktop tabs", "Session restore", "Finder workflow"):
+    if marker not in readme:
+        raise SystemExit(f"README.md is missing v1.2 product marker: {marker}")
+for marker in ("桌面标签", "会话恢复", "Finder 工作流"):
+    if marker not in readme_zh:
+        raise SystemExit(f"README_zh.md is missing v1.2 product marker: {marker}")
+for marker in ("New in v1.3", "Reliable autosave"):
+    if marker not in site:
+        raise SystemExit(f"website is missing v1.3 product marker: {marker}")
+if "Reliable autosave" not in readme or "可靠自动保存" not in readme_zh:
+    raise SystemExit("README files must describe v1.3 reliable autosave")
+if "What's New" not in src or "rely on automatic save" not in src:
+    raise SystemExit("macOS About must keep the current product positioning and What's New entry")
+PY
+  ran=1
+fi
+
+if [ -f macos/finder-extension/FinderSyncExtension.swift ]; then
+  echo "[agent-verify] Finder Sync integration contract"
+  grep -F 'com.apple.FinderSync' macos/finder-extension/project.yml >/dev/null
+  grep -F 'mdpreview' macos/finder-extension/FinderSyncExtension.swift >/dev/null
+  grep -F 'MDPreviewFinderExtension.appex' bundle.sh >/dev/null
+  grep -F 'CFBundleURLTypes' bundle.sh >/dev/null
   ran=1
 fi
 
